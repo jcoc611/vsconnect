@@ -1,0 +1,50 @@
+{
+	"name": "vscode-client",
+	"version": "0.1.0",
+	"description": "The ultimate network client",
+	"main": "./out/extension.js",
+	"engines": {
+		"vscode": "^1.38.0"
+	},
+	"activationEvents": [
+		"onCommand:catCoding.start",
+		"onCommand:catCoding.doRefactor",
+		"onWebviewPanel:catCoding"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "catCoding.start",
+				"title": "Start cat coding session",
+				"category": "Cat Coding"
+			},
+			{
+				"command": "catCoding.doRefactor",
+				"title": "Do some refactoring",
+				"category": "Cat Coding"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "tsc -p ./ && webpack",
+		"lint": "tslint -p ./",
+		"watch": "tsc -w -p ./ && webpack --watch"
+	},
+	"author": "Juan Osorio <Osorio.Juan@microsoft.com>",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^12.11.5",
+		"@types/request": "^2.48.3",
+		"@types/request-promise-native": "^1.0.17",
+		"@types/vscode": "^1.39.0",
+		"ts-loader": "^6.2.1",
+		"tslint": "^5.20.0",
+		"typescript": "^3.6.4",
+		"webpack": "^4.41.2",
+		"webpack-cli": "^3.3.9"
+	},
+	"dependencies": {
+		"request": "^2.88.0",
+		"request-promise-native": "^1.0.7"
+	}
+}

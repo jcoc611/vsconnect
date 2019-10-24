@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!--
+    Use a content security policy to only allow loading images from https or from our extension directory,
+    and only allow scripts that have a specific nonce.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
+    <title>Document</title>
+</head>
+<body>
+    <header></header>
+    <div id="content">
+        <div class="request">
+            <div class="consoleLine">
+                <span class="prompt">&gt;</span>
+                <span class="protocol">HTTP(S)</span>
+                <span class="verb">GET</span>
+                <input id="currentInput" type="text" class="endpoint" focus />
+                <button id="send" onclick="sendRequest()">send</button>
+            </div>
+            <div class="optionsLine">
+                <button>Query</button>
+                <button>Headers</button>
+                <button>Body</button>
+                <button>Auth</button>
+            </div>
+            <div class="optionContent"></div>
+        </div>
+        <script nonce="${nonce}" src="${scriptUri}"></script>
+    </div>
+</body>
+</html>

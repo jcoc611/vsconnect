@@ -1,0 +1,61 @@
+body {
+	font-family: 'Cascadia Code', sans-serif;
+}
+
+button {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border:0;
+	outline:0;
+	border-radius: 2px;
+	padding: 4px 8px;
+}
+
+.optionsLine button {
+	color: var(--vscode-activityBar-inactiveForeground);
+	background: transparent;
+	border: 1px solid var(--vscode-activityBar-inactiveForeground);
+}
+
+.optionsLine button.selected {
+	color: var(--vscode-activityBar-foreground);
+}
+
+#content {
+	margin: 5px;
+}
+
+.consoleLine .protocol {
+	color: var(--vscode-textLink-foreground);
+}
+
+.consoleLine .verb {
+	color: var(--vscode-terminal-ansiGreen);
+}
+
+.consoleLine input {
+	background: transparent;
+	color: var(--vscode-editor-foreground);
+	border: 0;
+	outline: 0;
+}
+
+.optionsLine {
+	margin: 5px 0px 15px 15px;
+}
+
+.response {
+	border-bottom: 1px solid var(--vscode-textSeparator-foreground);
+	border-left: 5px solid var(--vscode-terminal-ansiBrightGreen);
+}
+
+.response .metadata {
+	background-color: var(--vscode-textSeparator-foreground);
+	padding: 5px 10px;
+}
+
+.response .body {
+	height: 100px;
+	overflow: scroll;
+	padding: 2px 5px;
+}
