@@ -15,25 +15,24 @@
 		"commands": [
 			{
 				"command": "catCoding.start",
-				"title": "Start cat coding session",
-				"category": "Cat Coding"
-			},
-			{
-				"command": "catCoding.doRefactor",
-				"title": "Do some refactoring",
-				"category": "Cat Coding"
+				"title": "Open a new VSNet Tab",
+				"category": "VSNet"
 			}
 		]
 	},
 	"scripts": {
 		"compile": "tsc -p ./ && webpack",
 		"lint": "tslint -p ./",
-		"watch": "tsc -w -p ./ && webpack --watch"
+		"watch": "tsc -w -p ./ && webpack --watch",
+		"watch-webpack": "webpack --watch"
 	},
 	"author": "Juan Osorio <Osorio.Juan@microsoft.com>",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/classnames": "^2.2.9",
 		"@types/node": "^12.11.5",
+		"@types/react": "^16.9.9",
+		"@types/react-dom": "^16.9.2",
 		"@types/request": "^2.48.3",
 		"@types/request-promise-native": "^1.0.17",
 		"@types/vscode": "^1.39.0",
@@ -44,6 +43,9 @@
 		"webpack-cli": "^3.3.9"
 	},
 	"dependencies": {
+		"classnames": "^2.2.6",
+		"react": "^16.11.0",
+		"react-dom": "^16.11.0",
 		"request": "^2.88.0",
 		"request-promise-native": "^1.0.7"
 	}

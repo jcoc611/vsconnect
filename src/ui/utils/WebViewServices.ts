@@ -1,5 +1,5 @@
 import { WebViewService } from "./WebViewService";
-import { IProtocol, IVerb, IPayload, IServiceCall } from "../../interfaces";
+import { IProtocol, IVerb, IPayload, IServiceCall, ITransaction } from "../../interfaces";
 import { DelegatedPromise } from "../../utils/DelegatedPromise";
 
 class ProtocolWebService implements IProtocol {
@@ -14,8 +14,8 @@ class ProtocolWebService implements IProtocol {
 		return true; // no setup
 	}
 
-	async do(verb: IVerb, payload: IPayload): Promise<IPayload> {
-		return await this.actualService.execute( 'do', [ verb, payload ] ) as IPayload;
+	async do( transaction: ITransaction ): Promise<IPayload> {
+		return await this.actualService.execute( 'do', [ transaction ] ) as IPayload;
 	}
 }
 

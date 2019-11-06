@@ -18,15 +18,34 @@ export interface IServiceCall {
 }
 
 export interface IPayload {
-	endpoint : string;
+	type: "Payload";
+	body: string; // todo use IBodyFormat
 
-	getBodyText() : string;
+	/** @var string the payload status. In HTTP, this is the HTTP status code and text. */
+	shortStatus: string;
+
+	/** @var boolean a quick way to tell if the payload represents an error. */
+	isError: boolean;
+
+	isPending: boolean;
+
+	// getBodyText(): string;
 }
 
 export interface IVerb {
-	
+	verbId: string;
+}
+
+export interface ITransaction {
+	type: "Transaction";
+	protocolId: string;
+	payload: IPayload;
+	verb: IVerb;
+
+	endpoint: string;
 }
 
 export interface IProtocol extends IService {
-	do( verb: IVerb, payload: IPayload ) : Promise<IPayload>;
+	initialize( params: any[] ): Promise<boolean>;
+	do( transaction: ITransaction ) : Promise<IPayload>;
 }

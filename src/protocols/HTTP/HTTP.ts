@@ -1,6 +1,7 @@
 const request = require( 'request-promise-native' );
+import { Response } from "request";
 
-import { IVerb, IPayload } from '../../interfaces'
+import { IPayload, ITransaction } from '../../interfaces'
 
 import { Protocol } from '../Protocol';
 import { HTTPResponse } from './HTTPResponse';
@@ -10,13 +11,16 @@ export class HTTP extends Protocol {
 		return true; // no setup needed
 	}
 
-	do(verb: IVerb, payload: IPayload): Promise<IPayload> {
+	do( transaction: ITransaction ): Promise<IPayload> {
 		return request( {
-			uri: payload.endpoint,
-			resolveWithFullResponse: true
+			method: transaction.verb.verbId,
+			uri: transaction.endpoint,
+			resolveWithFullResponse: true,
+			simple: false
 		} ).then( ( res: Response ) => {
 			return HTTPResponse.FromNativeResponse( res );
+		} ).catch( (err: any) => {
+			return HTTPResponse.FromNativeResponse( err.response );
 		} );
 	}
-
 }

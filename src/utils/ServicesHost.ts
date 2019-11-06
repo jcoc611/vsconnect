@@ -20,7 +20,6 @@ export class ServicesHost implements IService {
 	}
 
 	async process( payload: IServiceCall ) : Promise<IServiceCall | null> {
-		console.log(payload)
 		if ( payload.type === 'request' ) {
 			if ( !this.serviceInstances.has( payload.body.serviceId ) ) {
 				throw new Error( `Got payload for non existent service ${payload}` );
@@ -28,7 +27,7 @@ export class ServicesHost implements IService {
 
 			let service: IService | undefined = this.serviceInstances.get( payload.body.serviceId);
 			if ( !service!.serviceMethods.has( payload.body.action ) ) {
-				throw new Error( `Cannot call non-existent action ${payload.body.action}`)
+				throw new Error( `Cannot call non-existent action ${payload.body.action}`);
 			}
 
 			let response : IServiceCall = {

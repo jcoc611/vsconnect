@@ -6,6 +6,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"rootDir": "src",
+		"jsx": "react",
 		"lib": [ "dom", "dom.iterable", "esnext" ]
 	},
 	"exclude": [ "node_modules", ".vscode-test" ]
