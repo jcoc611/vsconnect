@@ -1,8 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import { ServicesHost } from './utils/ServicesHost';
-import { IServiceCall } from './interfaces';
+import { ServiceAction, IServiceCall, IServiceResult } from './interfaces';
+import { Services } from './Services';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
@@ -36,7 +35,7 @@ class CatCodingPanel {
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionPath: string;
 	private _disposables: vscode.Disposable[] = [];
-	serviceHost: ServicesHost;
+	private services: Services;
 
 	public static createOrShow(extensionPath: string) {
 		const column = vscode.window.activeTextEditor
@@ -52,7 +51,7 @@ class CatCodingPanel {
 		// Otherwise, create a new panel.
 		const panel = vscode.window.createWebviewPanel(
 			CatCodingPanel.viewType,
-			'<extension-title>',
+			'VSConnect: Client',
 			column || vscode.ViewColumn.One,
 			{
 				// Enable javascript in the webview
@@ -62,7 +61,7 @@ class CatCodingPanel {
 				localResourceRoots: [
 					vscode.Uri.file(path.join(extensionPath, 'dist-webview')),
 					vscode.Uri.file(path.join(extensionPath, 'static'))
-				]
+				],
 			}
 		);
 
@@ -79,6 +78,7 @@ class CatCodingPanel {
 
 		// Set the webview's initial html content
 		// this._update();
+		this._panel.iconPath = vscode.Uri.file(path.join(extensionPath, 'static', 'VSConnectLogo.svg'));
 		this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
 		// Listen for when the panel is disposed
@@ -96,16 +96,30 @@ class CatCodingPanel {
 			this._disposables
 		);
 
-		this.serviceHost = new ServicesHost();
+		this.services = new Services();
+		this.services.on('message', (action: ServiceAction) => {
+			let svcCall: IServiceCall = {
+				type: 'call',
+				promiseId: 0, // TODO implement result handling if needed
+				action
+			};
+			this._panel.webview.postMessage(svcCall);
+		});
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
-			( message ) => {
-				this.serviceHost.process( message as IServiceCall ).then( (response: IServiceCall | null) => {
-					if ( response ) {
-						this._panel.webview.postMessage( response )
+			(message) => {
+				let call: IServiceCall = message;
+				this.services.process(call.action).then( (result: any) => {
+					if (result !== undefined) {
+						let svcResult: IServiceResult = {
+							type: 'result',
+							promiseId: call.promiseId,
+							result
+						};
+						this._panel.webview.postMessage(svcResult);
 					}
-				} )
+				} );
 			},
 			null,
 			this._disposables

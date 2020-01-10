@@ -1,5 +1,5 @@
 body {
-	font-family: 'Cascadia Code', sans-serif;
+	font-family: var(--vscode-font-family);
 }
 
 button {
@@ -9,6 +9,18 @@ button {
 	outline:0;
 	border-radius: 2px;
 	padding: 4px 8px;
+}
+
+textarea {
+	box-sizing:border-box;
+	width: 100%;
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border);
+	color: var(--vscode-input-foreground);
+}
+
+.response textarea {
+	background: transparent;
 }
 
 .optionsLine button {
@@ -47,10 +59,17 @@ button {
 	color: var(--vscode-editor-foreground);
 	border: 0;
 	outline: 0;
+	width: 300px;
 }
 
 .optionsLine {
 	margin: 10px 0px;
+}
+
+.response .optionsLine {
+	margin-top: 0px;
+	margin-bottom: 5px;
+	background: var(--vscode-editorGroupHeader-tabsBackground);
 }
 
 .request {
@@ -94,6 +113,11 @@ button {
 	border: 0;
 }
 
+.response .optionContent {
+	margin-left: 5px;
+	margin-bottom: 5px;
+}
+
 .request .var, .response .var {
 	color: var(--vscode-titleBar-inactiveForeground);
 	width: 50px;
@@ -108,6 +132,35 @@ button {
 .request .prompt, .response .prompt {
 	width: 15px;
 	line-height: 22px;
+}
+
+.response .consoleLine {
+	color: var(--vscode-titleBar-inactiveForeground);
+	background: var(--vscode-titleBar-inactiveBackground);
+}
+
+.response .consoleLine input {
+	color: var(--vscode-editorWidget-foreground);
+	width: auto;
+	display: inline-block;
+	padding: 2px 5px;
+}
+
+.response .optionsLine button {
+	border: 1px solid var(--vscode-tab-border);
+	background: var(--vscode-tab-inactiveBackground);
+	color: var(--vscode-tab-inactiveForeground);
+}
+
+.response .optionsLine button:hover {
+	background: var(--vscode-tab-hoverBackground);
+}
+
+.response .optionsLine button.selected {
+	background: var(--vscode-tab-activeBackground);
+	color: var(--vscode-tab-activeForeground);
+	border-bottom: 1px solid var(--vscode-tab-activeBorder);
+	border-top: 1px solid var(--vscode-tab-activeBorderTop);
 }
 
 .suggestdropdown {
@@ -209,4 +262,32 @@ button {
 
 .dropdown-placeholder {
 	display: inline-block;
+}
+
+/** Key Value Edit */
+.kvedit thead {
+	font-weight: bold;
+}
+
+.kvedit thead td {
+	padding: 5px;
+}
+
+.kvedit tbody td input {
+	width: 100%;
+	background: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 0;
+	outline: 0;
+	padding: 5px;
+	box-sizing: border-box;
+}
+
+.kvedit td {
+	border: 1px solid var(--vscode-editor-background);
+}
+
+.kvedit table {
+	border-collapse: collapse;
+	border-spacing: 1px;
 }

@@ -1,23 +1,26 @@
 import * as React from 'react';
 import * as classNames from 'classnames';
+import { IVisualizationItem } from '../../../interfaces';
+import { AbstractItem, AbstractItemProps } from './AbstractItem';
 
-interface DropdownProps {
-	options: string[];
-	value: string | null;
-	disabled?: boolean;
-	onChange?: (newValue: string | null) => void;
-}
+// interface DropdownProps {
+// 	onChange?: (newValue: string) => void;
+
+// 	options: string[];
+// 	value: string | null;
+// 	readOnly?: boolean;
+// }
 
 interface DropdownState {
 	isOpen: boolean;
 	value: string | null;
 }
 
-export class Dropdown extends React.Component<DropdownProps, DropdownState> {
+export class Dropdown extends AbstractItem<string, DropdownState> {
 	mounted: boolean;
 	state: DropdownState;
 
-	constructor(initialProps: DropdownProps) {
+	constructor(initialProps: AbstractItemProps<string>) {
 		super(initialProps);
 
 		this.mounted = false;
@@ -27,7 +30,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 		};
 	}
 
-	componentWillReceiveProps(newProps: DropdownProps) {
+	componentWillReceiveProps(newProps: AbstractItemProps<string>) {
 		if (newProps.value) {
 			if (newProps.value !== this.state.value) {
 				this.setState({ value: newProps.value })
@@ -54,7 +57,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 		event.stopPropagation();
 		event.preventDefault();
 
-		if ( !this.props.disabled ) {
+		if ( !this.props.readOnly ) {
 			this.setState({
 				isOpen: !this.state.isOpen
 			});
@@ -72,7 +75,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 	}
 
 	fireChangeEvent(newState: DropdownState) {
-		if (newState.value !== this.state.value && this.props.onChange) {
+		if (newState.value !== this.state.value && this.props.onChange && newState.value !== null) {
 			this.props.onChange(newState.value)
 		}
 	}
@@ -97,15 +100,15 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 	}
 
 	buildMenu() {
-		const { options } = this.props;
+		const { allowedValues } = this.props;
 
-		if (options.length == 0) {
+		if (!allowedValues || allowedValues.length === 0) {
 			return <div className={`dropdown-noresults`}>
 				No options found
 			</div>;
 		}
 
-		return options.map( (option) => {
+		return allowedValues.map( (option) => {
 			return this.renderOption(option)
 		} );
 	}
@@ -125,6 +128,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 	}
 
 	render () {
+		const { readOnly } = this.props;
 		const placeHolderValue = this.state.value;
 
 		const baseClassName = 'dropdown';
@@ -134,7 +138,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 		});
 		const controlClass = classNames({
 			[`${baseClassName}-control`]: true,
-			['disabled']: !!this.props.disabled,
+			['disabled']: !!this.props.readOnly,
 		});
 		const placeholderClass = classNames({
 			[`${baseClassName}-placeholder`]: true,
@@ -157,7 +161,7 @@ export class Dropdown extends React.Component<DropdownProps, DropdownState> {
 			<div className={controlClass} onMouseDown={this.handleMouseDown}
 				onTouchEnd={this.handleMouseDown} aria-haspopup='listbox'>
 				{value}
-				<span className={`${baseClassName}-arrow-wrapper`}>▾</span>
+				<span className={`${baseClassName}-arrow-wrapper`}>{(readOnly)? '': '▾'}</span>
 			</div>
 			{menu}
 		</div>;

@@ -4,14 +4,19 @@ import * as ReactDOM from "react-dom";
 import { ConsoleSurface } from './components/ConsoleSurface';
 import { StateManager } from './StateManager';
 
-let state = new StateManager();
+let state = StateManager.GetInstance();
 
-state.onChange( (newHistory) => {
-	ReactDOM.render(
-		<ConsoleSurface history={ newHistory }
-			sendCurrentRequest={ state.sendCurrentRequest.bind(state) }
-			updateRequest={ state.updateRequest.bind(state) }
-			lastReqId={ state.getLastRequestId() } />,
-		document.getElementById("content-wrapper")
-	);
-} );
+state.getAllProtocols().then( (protocols) => {
+	state.onChange( (newHistory) => {
+		ReactDOM.render(
+			<ConsoleSurface
+				history={ newHistory }
+				allProtocols={protocols}
+				currentRequest={state.getCurrentRequest()}
+				sendCurrentRequest={ state.sendCurrentRequest.bind(state) }
+				setProtocol={ state.setProtocol.bind(state) }
+				updateUI={ state.updateUI.bind(state) } />,
+			document.getElementById("content-wrapper")
+		);
+	} );
+});

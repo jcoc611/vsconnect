@@ -1,7 +1,7 @@
 {
-	"name": "vscode-client",
+	"name": "vsconnect",
 	"version": "0.1.0",
-	"description": "The ultimate network client",
+	"description": "The ultimate network client for VS Code",
 	"main": "./out/extension.js",
 	"engines": {
 		"vscode": "^1.38.0"
@@ -15,8 +15,8 @@
 		"commands": [
 			{
 				"command": "catCoding.start",
-				"title": "Open a new VSNet Tab",
-				"category": "VSNet"
+				"title": "Open a new VSConnect Tab",
+				"category": "VSConnect"
 			}
 		]
 	},

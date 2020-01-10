@@ -1,51 +1,154 @@
-export interface IService {
-	serviceMethods: Set<string>;
-	initialize( params: any[] ): Promise<boolean>;
+import { string } from "prop-types";
+
+// export interface IService {
+// 	serviceMethods: Set<string>;
+// 	initialize( params: any[] ): Promise<boolean>;
+// }
+
+// export interface IServiceMetadata {
+// 	serviceId : number;
+// }
+
+// export interface IServiceCall {
+// 	type: 'request' | 'response';
+// 	promiseId?: number;
+// 	body: {
+// 		serviceId: number,
+// 		action: string,
+// 		params: any[]
+// 	};
+// }
+
+export enum IComponentTypes {
+	KeyValues,
+	Enum,
+	String,
+	Host,
+	Bytes
+} 
+
+export interface IComponent {
+	name: string;
+	type: IComponentTypes;
+	required: boolean;
+
+	default: any;
+	allowedValues?: any[];
 }
 
-export interface IServiceMetadata {
-	serviceId : number;
+export interface IProtocolMetadata {
+	id: string;
+	components: IComponent[];
 }
 
-export interface IServiceCall {
-	type: string;
-	promiseId: number | null;
-	body: {
-		serviceId: number,
-		action: string,
-		params: any[]
-	};
-}
-
-export interface IPayload {
-	type: "Payload";
-	body: string; // todo use IBodyFormat
-
-	/** @var string the payload status. In HTTP, this is the HTTP status code and text. */
-	shortStatus: string;
-
-	/** @var boolean a quick way to tell if the payload represents an error. */
-	isError: boolean;
-
-	isPending: boolean;
-
-	// getBodyText(): string;
-}
-
-export interface IVerb {
-	verbId: string;
+export enum ITransactionState {
+	Dummy,
+	Pending,
+	Sent,
+	Acknowledged,
+	Replied,
+	Error
 }
 
 export interface ITransaction {
-	type: "Transaction";
 	protocolId: string;
-	payload: IPayload;
-	verb: IVerb;
-
-	endpoint: string;
+	connectionId?: number;
+	state: ITransactionState;
+	shortStatus: string;
+	components: { [name: string]: any };
 }
 
-export interface IProtocol extends IService {
-	initialize( params: any[] ): Promise<boolean>;
-	do( transaction: ITransaction ) : Promise<IPayload>;
+export enum UITypes {
+	KeyValues,
+	Enum,
+	String,
+	Host,
+	Bytes
 }
+
+export interface IUserInterface {
+	location: 'short' | 'extra';
+	type: UITypes;
+	name: string;
+
+	allowedValues?: any[];
+}
+
+export interface IVisualizationItem {
+	handlerId: number;
+	ui: IUserInterface;
+	value: any;
+}
+
+export type IContext = 'incoming' | 'outgoing';
+
+export interface IVisualization {
+	context: IContext;
+	items: IVisualizationItem[];
+	transaction: ITransaction;
+}
+
+export type KeyValues<T> = [T, T][];
+
+
+export enum ServiceActionTypes {
+	GetAllProtocols,
+	GetNewRequest,
+	HandleVisualizationChange,
+	DoTransaction,
+	VisualizeResponse,
+	AppendResponse
+};
+
+interface GetAllProtocolsAction {
+	type: ServiceActionTypes.GetAllProtocols;
+	params: []
+}
+
+interface GetNewRequest {
+	type: ServiceActionTypes.GetNewRequest;
+	params: [string]
+}
+
+interface HandleVisualizationChangeAction {
+	type: ServiceActionTypes.HandleVisualizationChange;
+	params: [IVisualizationItem, ITransaction]
+}
+
+interface DoTransactionAction {
+	type: ServiceActionTypes.DoTransaction;
+	params: [ITransaction];
+}
+
+interface VisualizeResponseAction {
+	type: ServiceActionTypes.VisualizeResponse,
+	params: [ITransaction]
+}
+
+interface AppendResponseAction {
+	type: ServiceActionTypes.AppendResponse,
+	params: [IVisualization]
+}
+
+export type ServiceAction = (
+	GetAllProtocolsAction
+	| GetNewRequest
+	| HandleVisualizationChangeAction
+	| DoTransactionAction
+	| VisualizeResponseAction
+	| AppendResponseAction
+);
+
+export interface IServiceCall {
+	type: 'call';
+	action: ServiceAction;
+	promiseId: number;
+}
+
+export interface IServiceResult {
+	type: 'result';
+	result: any;
+	promiseId: number;
+}
+
+export type IServiceMessage = IServiceCall | IServiceResult;
