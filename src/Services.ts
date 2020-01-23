@@ -1,6 +1,6 @@
-import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext } from "./interfaces";
+import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI } from "./interfaces";
 import { ProtocolHandler } from "./ProtocolHandler";
-import { UserInterfaceHandler } from "./UserInterfaceHandler";
+import { UserInterfaceHandler } from "./uiHandlers/UserInterfaceHandler";
 import { EventEmitter } from "./utils/EventEmitter";
 import { HTTP } from "./protocols/HTTP/HTTP.protocol";
 import { QueryComponent } from "./protocols/HTTP/components/Query";
@@ -9,6 +9,7 @@ import { HeadersComponent } from "./protocols/HTTP/components/Headers";
 import { VerbsComponent } from "./protocols/HTTP/components/Verbs";
 import { BodyComponent } from "./protocols/HTTP/components/Body";
 import { StatusTextComponent } from "./protocols/HTTP/components/StatusText";
+import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
 
 //-----------------------------------------------------------------------------------
 //  3. process('protocol:set') - User selects one of the protocols (i.e. default one)
@@ -19,17 +20,11 @@ import { StatusTextComponent } from "./protocols/HTTP/components/StatusText";
 
 
 export class Services extends EventEmitter {
-	private protocols: Map<string, { new(): ProtocolHandler }> = new Map([ ['HTTP', HTTP] ]);
-	private connections: ProtocolHandler[] = [];
+	/** @var protocols  map of protocol names to handlers */
+	private protocols: Map<string, ProtocolHandler> = new Map();
 
-	private uiHandlers: UserInterfaceHandler<any>[] = [
-		new StatusTextComponent(),
-		new VerbsComponent(),
-		new URLComponent(),
-		new QueryComponent(),
-		new BodyComponent(),
-		new HeadersComponent()
-	];
+	/** @var uiHandlers  list of user interface handlers */
+	private uiHandlers: UserInterfaceHandler<any>[] = [];
 
 	async process(action: ServiceAction) : Promise<any> {
 		switch (action.type) {
@@ -66,24 +61,66 @@ export class Services extends EventEmitter {
 	}
 
 	// Adding protocols
-	addProtocol(name: string, handler: { new(): ProtocolHandler }): void {
-		this.protocols.set(name, handler);
-	}
-
-	getProtocolHandler(name: string): ProtocolHandler {
-		let PHandler = this.protocols.get(name);
-		if ( PHandler === undefined ) {
-			throw new Error(`Protocol with name ${name} not found.`);
-		}
-		let result = new PHandler();
-		result.on('response', (response: ITransaction) => {
+	addProtocol(name: string, handler: ProtocolHandler): void {
+		handler.on('response', (response: ITransaction) => {
 			this.trigger('message', {
 				type: ServiceActionTypes.AppendResponse,
 				params: [ this.getVisualization('incoming', response) ]
 			} as ServiceAction);
 		});
 
-		return result;
+		let metadata = handler.getMetadata();
+		for (let z = 0; z < metadata.components.length; z++) {
+			let component = metadata.components[z];
+			if (component.ui === undefined) {
+				continue;
+			}
+
+			let ui: IUserInterface;
+			if (typeof(component.ui) === "string") {
+				ui = {
+					type: DefaultComponentUI[component.type],
+					name: component.name,
+					location: component.ui,
+				}
+			} else {
+				ui = component.ui;
+			}
+
+			if (component.allowedValues && ui.allowedValues === undefined) {
+				ui.allowedValues = component.allowedValues;
+			}
+
+			if (component.components && ui.components === undefined) {
+				ui.components = component.components.map( (c) => ({
+					name: c.name,
+					type: DefaultComponentUI[c.type],
+					required: c.required,
+					default: c.default,
+					allowedValues: c.allowedValues,
+					location: ui.location,
+				}));
+			}
+
+			this.addUIHandler( new UISimpleHandler(name, ui) );
+		}
+
+		if (metadata.extraHandlers) {
+			for (let z = 0; z < metadata.extraHandlers.length; z++) {
+				this.addUIHandler(metadata.extraHandlers[z]);
+			}
+		}
+
+		this.protocols.set(name, handler);
+	}
+
+	getProtocolHandler(name: string): ProtocolHandler {
+		let handler = this.protocols.get(name);
+		if ( handler === undefined ) {
+			throw new Error(`Protocol with name ${name} not found.`);
+		}
+
+		return handler;
 	}
 
 	getAllProtocols(): string[] {
@@ -99,14 +136,14 @@ export class Services extends EventEmitter {
 
 	doTransaction(transaction: ITransaction): void {
 		let handler: ProtocolHandler;
-		if (transaction.connectionId !== undefined) {
-			if (this.connections.length <= transaction.connectionId) {
-				throw new Error(`Connection $conn${transaction.connectionId} doesn't exist`);
-			}
-			handler = this.connections[transaction.connectionId];
-		} else {
+		// if (transaction.connectionId !== undefined) {
+		// 	if (this.connections.length <= transaction.connectionId) {
+		// 		throw new Error(`Connection $conn${transaction.connectionId} doesn't exist`);
+		// 	}
+		// 	handler = this.connections[transaction.connectionId];
+		// } else {
 			handler = this.getProtocolHandler(transaction.protocolId);
-		}
+		// }
 
 		handler.do(transaction);
 	}

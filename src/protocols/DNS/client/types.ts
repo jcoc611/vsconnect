@@ -1,11 +1,8 @@
 import { BufferIO } from "./BufferIO";
-import { IHeader } from "./interfaces";
+import { IHeader, IMessage, IQuestion, IResourceRecord, IRDataA, IRDataMX, IRDataAAAA, IRDataNS, IRDataCNAME, IRDataTXT, IRDataSOA, IRDataSRV, IRDataCAA, RecordType } from "./interfaces";
 
 // Based on https://github.com/song940/node-dns
 // Node-dns with Copyright (c) 2016 lsong - MIT License
-
-const BufferReader = require('./lib/reader');
-const BufferWriter = require('./lib/writer');
 
 
 /**
@@ -20,47 +17,46 @@ class DnsHeader {
 	 * @return {[type]}        [description]
 	 * @docs https://tools.ietf.org/html/rfc1035#section-4.1.1
 	 */
-	static parse(io: BufferIO): IHeader {
+	static fromBuffer(reader: BufferIO): IHeader {
 		let header: IHeader = {
-			id     : io.readUInt(16),
-			qr     : Boolean( io.readUInt(1) ),
-			opcode : io.readUInt(4),
-			aa     : Boolean( io.readUInt(1) ),
-			tc     : Boolean( io.readUInt(1) ),
-			rd     : Boolean( io.readUInt(1) ),
-			ra     : Boolean( io.readUInt(1) ),
-			z      : io.readUInt(3) && 0,
-			rcode  : io.readUInt(4),
-			qdcount: io.readUInt(16),
-			ancount: io.readUInt(16),
-			nscount: io.readUInt(16),
-			arcount: io.readUInt(16),
+			id     : reader.readUInt(16),
+			qr     : Boolean( reader.readUInt(1) ),
+			opcode : reader.readUInt(4),
+			aa     : Boolean( reader.readUInt(1) ),
+			tc     : Boolean( reader.readUInt(1) ),
+			rd     : Boolean( reader.readUInt(1) ),
+			ra     : Boolean( reader.readUInt(1) ),
+			z      : reader.readUInt(3) && 0,
+			rcode  : reader.readUInt(4),
+			qdcount: reader.readUInt(16),
+			ancount: reader.readUInt(16),
+			nscount: reader.readUInt(16),
+			arcount: reader.readUInt(16),
 		};
 
 		return header;
 	};
-  
-  /**
-   * [toBuffer description]
-   * @return {[type]} [description]
-   */
-  Packet.Header.prototype.toBuffer = function(writer){
-	writer = writer || new Packet.Writer();
-	writer.write(this.id     , 16)
-	writer.write(this.qr     , 1)
-	writer.write(this.opcode , 4)
-	writer.write(this.aa     , 1)
-	writer.write(this.tc     , 1)
-	writer.write(this.rd     , 1)
-	writer.write(this.ra     , 1)
-	writer.write(this.z      , 3)
-	writer.write(this.rcode  , 4)
-	writer.write(this.qdcount, 16)
-	writer.write(this.ancount, 16)
-	writer.write(this.nscount, 16)
-	writer.write(this.arcount, 16)
-	return writer.toBuffer();
-  };
+
+	/**
+	 * [toBuffer description]
+	 * @return {[type]} [description]
+	 */
+	static toBuffer(writer: BufferIO, header: IHeader) {
+		writer.writeUInt(header.id        , 16);
+		writer.writeUInt(header.qr ? 1 : 0, 1);
+		writer.writeUInt(header.opcode    , 4);
+		writer.writeUInt(header.aa ? 1 : 0, 1);
+		writer.writeUInt(header.tc ? 1 : 0, 1);
+		writer.writeUInt(header.rd ? 1 : 0, 1);
+		writer.writeUInt(header.ra ? 1 : 0, 1);
+		writer.writeUInt(header.z         , 3);
+		writer.writeUInt(header.rcode     , 4);
+		writer.writeUInt(header.qdcount   , 16);
+		writer.writeUInt(header.ancount   , 16);
+		writer.writeUInt(header.nscount   , 16);
+		writer.writeUInt(header.arcount   , 16);
+	};
+}
 
 /**
  * [Packet description]
@@ -68,7 +64,7 @@ class DnsHeader {
  * @docs https://tools.ietf.org/html/rfc1034
  * @docs https://tools.ietf.org/html/rfc1035
  *
- * <Buffer 29 64 01 00 00 01 00 00 00 00 00 00 
+ * <Buffer 29 64 01 00 00 01 00 00 00 00 00 00
  *       |-ID----------- HEADER ----------->|
  *
  *  03 77 77 77 01 7a 02 63 6e 00 00 01 00 01>
@@ -84,316 +80,156 @@ export class DnsMessage {
 		return Math.floor(Math.random() * 1e5);
 	};
 
-	static fromBuffer(buffer: Buffer): DnsMessage {
-		let packet = new DnsMessage();
-		let reader = new BufferIO(buffer);
-		packet.header = DnsHeader.parse(reader);
-		// ([ // props             parser              count
-		// 	[ 'questions'   , Packet.Question, packet.header.qdcount ],
-		// 	[ 'answers'     , Packet.Resource, packet.header.ancount ],
-		// 	[ 'authorities' , Packet.Resource, packet.header.nscount ],
-		// 	[ 'additionals' , Packet.Resource, packet.header.arcount ]
-		// ]).forEach(function(def){
-		// 	var section = def[0];
-		// 	var decoder = def[1];
-		// 	var count   = def[2];
-		// 	while(count--){
-		// 	try{
-		// 		packet[ section ] = packet[ section ] || [];
-		// 		packet[ section ].push( decoder.parse(reader) );
-		// 	}catch(e){
-		// 		console.error('node-dns > parse %s error:', section, e.message);
-		// 	}
-		// 	}
-		// });
-		return packet;
+	static fromBuffer(reader: BufferIO): IMessage {
+		let header: IHeader = DnsHeader.fromBuffer(reader);
+		let questions: IQuestion[] = [];
+		let answers: IResourceRecord[] = [];
+		let authorities: IResourceRecord[] = [];
+		let additionals: IResourceRecord[] = [];
+
+		for (let z = 0; z < header.qdcount; z++) {
+			questions.push( DnsQuestion.fromBuffer(reader) );
+		}
+
+		for (let z = 0; z < header.ancount; z++) {
+			answers.push( DnsResourceRecord.fromBuffer(reader) );
+		}
+
+		for (let z = 0; z < header.nscount; z++) {
+			authorities.push( DnsResourceRecord.fromBuffer(reader) );
+		}
+
+		for (let z = 0; z < header.arcount; z++) {
+			additionals.push( DnsResourceRecord.fromBuffer(reader) );
+		}
+
+		let message: IMessage = {
+			header,
+			questions,
+			answers,
+			authorities,
+			additionals,
+		};
+		return message;
 	};
 
 	/**
 	 * [toBuffer description]
 	 * @return {[type]} [description]
 	 */
-	toBuffer(){
-		let writer = Packet.Writer();
-		this.header.qdcount = this.questions  .length;
-		this.header.ancount = this.answers    .length;
-		this.header.nscount = this.authorities.length;
-		this.header.arcount = this.additionals.length;
-		if(!(this instanceof Packet.Header))
-		this.header = new Packet.Header(this.header);
-		this.header.toBuffer(writer);
-		;([ // section          encoder
-		[ 'questions'  , Packet.Question ],
-		[ 'answers'    , Packet.Resource ],
-		[ 'authorities', Packet.Resource ],
-		[ 'additionals', Packet.Resource ],
-		]).forEach(function(def){
-		var section   = def[0];
-		var Encoder   = def[1];
-		(this[ section ] || []).map(function(resource){
-			return Encoder.encode(resource, writer);
-		});
-		}.bind(this));
-		return writer.toBuffer();
-	};
+	static toBuffer(writer: BufferIO, message: IMessage) {
+		message.header.qdcount = message.questions  .length;
+		message.header.ancount = message.answers    .length;
+		message.header.nscount = message.authorities.length;
+		message.header.arcount = message.additionals.length;
+		DnsHeader.toBuffer(writer, message.header);
 
-	constructor() {
-		this.header      = {};
-		this.questions   = [];
-		this.answers     = [];
-		this.authorities = [];
-		this.additionals = [];
-		// if(data instanceof Packet){
-		// 	return data;
-		// } else if(data instanceof Packet.Header){
-		// 	this.header = data;
-		// } else if(data instanceof Packet.Question){
-		// 	this.questions.push(data);
-		// } else if(data instanceof Packet.Resource){
-		// 	this.answers.push(data);
-		// } else if(typeof data === 'string'){
-		// 	this.questions.push(data);
-		// } else if(typeof data === 'object'){
-		// 	var type = ({}).toString.call(data).match(/\[object (\w+)\]/)[1];
-		// 	if(type === 'Array'){
-		// 	this.questions = data;
-		// 	}
-		// 	if(type === 'Object'){
-		// 	this.header = data;
-		// 	}
-		// }
-	};
-};
-
-/**
- * [QUERY_TYPE description]
- * @type {Object}
- * @docs https://tools.ietf.org/html/rfc1035#section-3.2.2
- */
-Packet.TYPE = {
-  A     : 0x01,
-  NS    : 0x02,
-  MD    : 0x03,
-  MF    : 0x04,
-  CNAME : 0x05,
-  SOA   : 0x06,
-  MB    : 0x07,
-  MG    : 0x08,
-  MR    : 0x09,
-  NULL  : 0x0A,
-  WKS   : 0x0B,
-  PTR   : 0x0C,
-  HINFO : 0x0D,
-  MINFO : 0x0E,
-  MX    : 0x0F,
-  TXT   : 0x10,
-  AAAA  : 0x1C,
-  SPF   : 0x63,
-  AXFR  : 0xFC,
-  MAILB : 0xFD,
-  MAILA : 0xFE,
-  ANY   : 0xFF,
-  CAA   : 0x101,
-};
-/**
- * [QUERY_CLASS description]
- * @type {Object}
- * @docs https://tools.ietf.org/html/rfc1035#section-3.2.4
- */
-Packet.CLASS = {
-  IN : 0x01,
-  CS : 0x02,
-  CH : 0x03,
-  HS : 0x04,
-  ANY: 0xFF
-};
-
-
-
+		message.questions.map( (q) => DnsQuestion.toBuffer(writer, q) );
+		message.answers.map( (a) => DnsResourceRecord.toBuffer(writer, a) );
+		message.authorities.map( (a) => DnsResourceRecord.toBuffer(writer, a) );
+		message.additionals.map( (a) => DnsResourceRecord.toBuffer(writer, a) );
+	}
+}
 
 /**
  * Question section format
  * @docs https://tools.ietf.org/html/rfc1035#section-4.1.2
  */
-Packet.Question = function(name, type, cls){
-  var defaults = {
-    type : Packet.TYPE .ANY,
-    class: Packet.CLASS.ANY
-  };
-  if(typeof name === 'object'){
-    for(var k in name)
-      this[ k ] = name[k] || defaults[k];
-  } else {
-    this.name = name;
-    this.type = type || defaults.type;
-    this.class = cls || defaults.class;
-  }
-  return this;
-};
+class DnsQuestion {
 
-/**
- * [toBuffer description]
- * @param  {[type]} writer [description]
- * @return {[type]}        [description]
- */
-Packet.Question.prototype.toBuffer = function(writer){
-  return Packet.Question.encode(this, writer);
-};
+	/**
+	 * [parse description]
+	 * @param  {[type]} reader [description]
+	 * @return {[type]}        [description]
+	 */
+	static fromBuffer(reader: BufferIO): IQuestion {
+		var question: IQuestion = {
+			name: DnsDomain.fromBuffer(reader),
+			type: reader.readUInt(16),
+			qClass: reader.readUInt(16),
+		};
+		return question;
+	};
 
-/**
- * [parse description]
- * @param  {[type]} reader [description]
- * @return {[type]}        [description]
- */
-Packet.Question.parse = 
-Packet.Question.decode = function(reader){
-  var question = new Packet.Question();
-  if(reader instanceof Buffer){
-    reader = new Packet.Reader(reader);
-  }
-  question.name = Packet.Name.decode(reader);
-  question.type = reader.read(16);
-  question.class= reader.read(16);
-  return question;
-};
-
-Packet.Question.encode = function(question, writer){
-  writer = writer || new Packet.Writer();
-  Packet.Name.encode(question.name, writer);
-  writer.write(question.type,  16);
-  writer.write(question.class, 16);
-  return writer.toBuffer();
-};
-
-/**
- * Resource record format
- * @docs https://tools.ietf.org/html/rfc1035#section-4.1.3
- */
-Packet.Resource = function(name, type, cls, ttl){
-  var defaults = {
-    name : '',
-    ttl  : 300,
-    type : Packet.TYPE .ANY,
-    class: Packet.CLASS.ANY
-  };
-  if(typeof name === 'object'){
-    for(var k in name)
-      this[ k ] || name[k] || defaults[k];
-  } else {
-    this.name  = name || defaults.name;
-    this.type  = type || defaults.type;
-    this.ttl   = ttl  || defaults.ttl;
-    this.class = cls  || defaults.class;
-  }
-  return this;
-};
-
-/**
- * [toBuffer description]
- * @param  {[type]} writer [description]
- * @return {[type]}        [description]
- */
-Packet.Resource.prototype.toBuffer = function(writer){
-  return Packet.Resource.encode(this, writer);
-};
-
-/**
- * [encode description]
- * @param  {[type]} resource [description]
- * @param  {[type]} writer   [description]
- * @return {[type]}          [description]
- */
-Packet.Resource.encode = function(resource, writer){
-  writer = writer || new Packet.Writer();
-  Packet.Name.encode(resource.name, writer);
-  writer.write(resource.type,  16);
-  writer.write(resource.class, 16);
-  writer.write(resource.ttl,   32);
-  var encoder = Object.keys(Packet.TYPE).filter(function(type){
-    return resource.type == Packet.TYPE[ type ];
-  })[0];
-  if(encoder in Packet.Resource && Packet.Resource[ encoder ].encode){
-    return Packet.Resource[ encoder ].encode(resource, writer);
-  } else {
-    console.error('node-dns > unknown encoder %s(%j)', encoder, resource.type);
-  }
-};
-/**
- * [parse description]
- * @param  {[type]} reader [description]
- * @return {[type]}        [description]
- */
-Packet.Resource.parse = 
-Packet.Resource.decode = function(reader){
-  if(reader instanceof Buffer){
-    reader = new Packet.Reader(reader);
-  }
-  var resource = new Packet.Resource();
-  resource.name  = Packet.Name.decode(reader);
-  resource.type  = reader.read(16);
-  resource.class = reader.read(16);
-  resource.ttl   = reader.read(32);
-  var length     = reader.read(16);
-  var parser = Object.keys(Packet.TYPE).filter(function(type){
-    return resource.type === Packet.TYPE[ type ];
-  })[0];
-  if(parser in Packet.Resource){
-    resource = Packet.Resource[ parser ].decode.call(resource, reader, length);  
-  } else {
-    console.error('node-dns > unknown parser type: %s(%j)', parser, resource.type);
-    var arr = [];
-    while(length--) arr.push(reader.read(8));
-    resource.data = Buffer.from(arr);
-  }
-  return resource;
-};
+	static toBuffer(writer: BufferIO, question: IQuestion){
+		DnsDomain.toBuffer(writer, question.name);
+		writer.writeUInt(question.type,   16);
+		writer.writeUInt(question.qClass, 16);
+	};
+}
 
 /**
  * [encode_name description]
  * @param  {[type]} domain [description]
  * @return {[type]}        [description]
  */
-Packet.Name = {
-  COPY: 0xc0,
-  decode: function(reader){
-    if(reader instanceof Buffer){
-      reader = new Packet.Reader(reader);
-    }
-    var name = [], o, len = reader.read(8);
-    while(len){
-      if((len & Packet.Name.COPY) === Packet.Name.COPY){
-        len -= Packet.Name.COPY;
-        len = len << 8;
-        var pos = len + reader.read(8);
-        if(!o) o = reader.offset;
-        reader.offset = pos * 8;
-        len = reader.read(8);
-        continue;
-      } else {
-        var part = '';
-        while(len--) part += String.fromCharCode(reader.read(8));
-        name.push(part);
-        len = reader.read(8);
-      }
-    }
-    if(o) reader.offset = o;
-    return name.join('.');
-  },
-  encode: function(domain, writer){
-    writer = writer || new Packet.Writer();
-    // TODO: domain name compress
-    (domain || '').split('.').filter(function(part){
-      return !!part;
-    }).map(function(part){
-      writer.write(part.length, 8);
-      part.split('').map(function(c){
-        writer.write(c.charCodeAt(0), 8);
-        return c.charCodeAt(0)
-      });
-    });
-    writer.write(0, 8);
-    return writer.toBuffer();
-  }
+class DnsDomain {
+  static COPY = 0xc0
+
+  static fromBuffer(reader: BufferIO): string {
+		var name = [], prevOffset, len = reader.readUInt(8);
+
+		while (len) {
+			if( (len & DnsDomain.COPY) === DnsDomain.COPY ) {
+				len -= DnsDomain.COPY;
+				len = len << 8;
+				var pos = len + reader.readUInt(8);
+				if (!prevOffset) {
+					prevOffset = reader.getOffsetBits();
+				}
+				reader.seek(pos * 8);
+				len = reader.readUInt(8);
+				continue;
+			} else {
+				var part = '';
+				while (len--) {
+					part += String.fromCharCode( reader.readUInt(8) );
+				}
+				name.push(part);
+				len = reader.readUInt(8);
+			}
+		}
+
+		if (prevOffset) {
+			reader.seek(prevOffset);
+		}
+
+		return name.join('.');
+	}
+
+	static toBuffer(writer: BufferIO, domain: string) {
+		// TODO: domain name compress
+		let labels = domain.split('.');
+
+		for (let z = 0; z < labels.length; z++) {
+			if (labels[z] === '') {
+				continue;
+			}
+
+			writer.writeUInt(labels[z].length, 8);
+
+			for (let i = 0; i < labels[z].length; i++) {
+				writer.writeUInt(labels[z].charCodeAt(i), 8);
+			}
+		}
+
+		writer.writeUInt(0, 8);
+	}
+
+	static getLength(domain: string) {
+		// TODO: domain name compress
+		let labels = domain.split('.');
+		let length = 8;
+
+		for (let z = 0; z < labels.length; z++) {
+			if (labels[z] === '') {
+				continue;
+			}
+			length += 8 * (labels[z].length + 1);
+		}
+
+		return length;
+	}
 };
 
 /**
@@ -401,29 +237,28 @@ Packet.Name = {
  * @type {Object}
  * @docs https://tools.ietf.org/html/rfc1035#section-3.4.1
  */
-Packet.Resource.A = function(address){
-  this.type  = Packet.TYPE.A;
-  this.class = Packet.CLASS.IN;
-  this.address = address;
-  return this;
-};
+export class RDataA {
+	static toBuffer(writer: BufferIO, data: IRDataA) {
+		var parts = data.address.split('.');
+		writer.writeUInt(parts.length, 16);
+		for (let i = 0; i < parts.length; i++) {
+			writer.writeUInt(parseInt(parts[i], 10), 8);
+		}
+	}
 
-Packet.Resource.A.encode = function(record, writer){
-  writer = writer || new Packet.Writer();
-  var parts = record.address.split('.');
-  writer.write(parts.length, 16);
-  parts.forEach(function(part){
-    writer.write(parseInt(part, 10), 8);
-  });
-  return writer.toBuffer();
-};
+	static fromBuffer(reader: BufferIO, length: number): IRDataA {
+		let parts = [];
+		while(length--){
+			parts.push( reader.readUInt(8) );
+		}
 
-Packet.Resource.A.decode = function(reader, length){
-  var parts = [];
-  while(length--) parts.push(reader.read(8));
-  this.address = parts.join('.');
-  return this;
-};
+		let record: IRDataA = {
+			address: parts.join('.'),
+		};
+
+		return record;
+	}
+}
 
 /**
  * [MX description]
@@ -431,194 +266,275 @@ Packet.Resource.A.decode = function(reader, length){
  * @param {[type]} priority [description]
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.9
  */
-Packet.Resource.MX = function(exchange, priority){
-  this.type = Packet.TYPE.MX;
-  this.class = Packet.CLASS.IN;
-  this.exchange = exchange;
-  this.priority = priority;
-  return this;
+class RDataMX {
+	/**
+	 * [encode description]
+	 * @param  {[type]} record [description]
+	 * @param  {[type]} writer [description]
+	 * @return {[type]}        [description]
+	 */
+	static toBuffer(writer: BufferIO, record: IRDataMX) {
+		var len = DnsDomain.getLength(record.exchange);
+		writer.writeUInt(len + 2, 16);
+		writer.writeUInt(record.priority, 16);
+
+		DnsDomain.toBuffer(writer, record.exchange);
+	}
+
+	/**
+	 * [decode description]
+	 * @param  {[type]} reader [description]
+	 * @param  {[type]} length [description]
+	 * @return {[type]}        [description]
+	 */
+	static fromBuffer(reader: BufferIO, length: number): IRDataMX {
+		let record: IRDataMX = {
+			priority: reader.readUInt(16),
+			exchange: DnsDomain.fromBuffer(reader),
+		};
+
+		return record;
+	}
 }
-/**
- * [encode description]
- * @param  {[type]} record [description]
- * @param  {[type]} writer [description]
- * @return {[type]}        [description]
- */
-Packet.Resource.MX.encode = function(record, writer){
-  writer = writer || new Packet.Writer();
-  var len = Packet.Name.encode(record.exchange).length;
-  writer.write(len + 2, 16);
-  writer.write(record.priority, 16);
-  Packet.Name.encode(record.exchange, writer);
-  return writer.toBuffer();
-}
-/**
- * [decode description]
- * @param  {[type]} reader [description]
- * @param  {[type]} length [description]
- * @return {[type]}        [description]
- */
-Packet.Resource.MX.decode = function(reader, length){
-  this.priority = reader.read(16);
-  this.exchange = Packet.Name.decode(reader);
-  return this; 
-};
+
 /**
  * [AAAA description]
  * @type {Object}
  * @docs https://en.wikipedia.org/wiki/IPv6
  */
-Packet.Resource.AAAA = {
-  decode: function(reader, length){
-    var parts = [];
-    while(length){
-      length-=2;
-      parts.push(reader.read(16));
-    };
-    this.address = parts.map(function(part){
-      return part > 0 ? part.toString(16) : '';
-    }).join(':');
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    var parts = record.address.split(':');
-    writer.write(parts.length * 2, 16);
-    parts.forEach(function(part){
-      writer.write(parseInt(part, 16), 16);
-    });
-    return writer.toBuffer();
-  }
-};
+// class RDataAAAA {
+// 	static fromBuffer(reader: BufferIO, length: number) {
+// 		var parts = [];
+// 		while(length){
+// 			length -= 2;
+// 			parts.push(reader.readUInt(16));
+// 		};
+// 		this.address = parts.map(function(part){
+// 			return part > 0 ? part.toString(16) : '';
+// 		}).join(':');
+// 	}
+
+// 	static toBuffer(writer: BufferIO, record: IRDataAAAA) {
+// 		var parts = record.address.split(':');
+// 		writer.writeUInt(parts.length * 2, 16)
+// 		parts.forEach(function(part){
+// 		writer.writeUInt(parseInt(part, 16), 16)
+// 		})
+// 	}
+// };
+
 /**
  * [NS description]
  * @type {Object}
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.11
  */
-Packet.Resource.NS = {
-  decode: function(reader, length){
-    this.ns = Packet.Name.decode(reader);
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    writer.write(Packet.Name.encode(record.ns).length, 16);
-    Packet.Name.encode(record.ns, writer);
-    return writer.toBuffer();
-  }
-};
+class RDataNS {
+	static fromBuffer(reader: BufferIO, length: number): IRDataNS {
+		return {
+			nsDName: DnsDomain.fromBuffer(reader),
+		} as IRDataNS;
+	}
+
+	static toBuffer(writer: BufferIO, record: IRDataNS){
+		writer.writeUInt(DnsDomain.getLength(record.nsDName), 16);
+		DnsDomain.toBuffer(writer, record.nsDName);
+	}
+}
+
 /**
  * [CNAME description]
  * @type {Object}
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.1
  */
-Packet.Resource.CNAME = {
-  decode: function(reader, length){
-    this.domain = Packet.Name.decode(reader);
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    writer.write(Packet.Name.encode(record.domain).length, 16);
-    Packet.Name.encode(record.domain, writer);
-    return writer.toBuffer();
-  }
-};
+class RDataCNAME {
+	static fromBuffer(reader: BufferIO, length: number): IRDataCNAME {
+		return {
+			domain: DnsDomain.fromBuffer(reader),
+		} as IRDataCNAME;
+	}
+
+	static toBuffer(writer: BufferIO, record: IRDataCNAME){
+		writer.writeUInt(DnsDomain.getLength(record.domain), 16);
+		DnsDomain.toBuffer(writer, record.domain);
+	}
+}
+
 /**
  * [SPF description]
  * @type {[type]}
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.14
  */
-Packet.Resource.SPF =
-Packet.Resource.TXT = {
-  decode: function(reader, length){
-    var parts = [];
-    length = reader.read(8); // text length
-    while(length--) parts.push(reader.read(8));
-    this.data = Buffer.from(parts).toString('utf8');
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    var buffer = Buffer.from(record.data, 'utf8');
-    writer.write(buffer.length + 1, 16); // response length
-    writer.write(buffer.length, 8); // text length
-    buffer.forEach(function(c){
-      writer.write(c, 8);
-    });
-    return writer.toBuffer();
-  }
-};
+class RDataTXT {
+	static fromBuffer(reader: BufferIO, length: number): IRDataTXT {
+		var parts = [];
+		// text length
+		length = reader.readUInt(8);
+		while (length--) {
+			parts.push(reader.readUInt(8));
+		}
+
+		return {
+			text: Buffer.from(parts).toString('utf8'),
+		} as IRDataTXT;
+	}
+
+	static toBuffer(writer: BufferIO, record: IRDataTXT) {
+		let buffer = Buffer.from(record.text, 'utf8');
+		// response length
+		writer.writeUInt(buffer.length + 1, 16);
+		// text length
+		writer.writeUInt(buffer.length, 8);
+		buffer.forEach( function(c) {
+			writer.writeUInt(c, 8);
+		});
+	}
+}
+
 /**
  * [SOA description]
  * @type {Object}
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.13
  */
-Packet.Resource.SOA = {
-  decode: function(reader, length){
-    this.primary    = Packet.Name.decode(reader);
-    this.admin      = Packet.Name.decode(reader);
-    this.serial     = reader.read(32);
-    this.refresh    = reader.read(32);
-    this.retry      = reader.read(32);
-    this.expiration = reader.read(32);
-    this.minimum    = reader.read(32);
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    var len = 0;
-    len += Packet.Name.encode(record.primary).length;
-    len += Packet.Name.encode(record.admin).length;
-    len += (32 * 5) / 8;
-    writer.write(len, 16);
-    Packet.Name.encode(record.primary, writer);
-    Packet.Name.encode(record.admin, writer);
-    writer.write(record.serial    , 32);
-    writer.write(record.refresh   , 32);
-    writer.write(record.retry     , 32);
-    writer.write(record.expiration, 32);
-    writer.write(record.minimum   , 32);
-    return writer.toBuffer();
-  }
-};
+class RDataSOA {
+	static fromBuffer(reader: BufferIO, length: number): IRDataSOA {
+		return {
+			mName:   DnsDomain.fromBuffer(reader),
+			rName:   DnsDomain.fromBuffer(reader),
+			serial:  reader.readUInt(32),
+			refresh: reader.readUInt(32),
+			retry:   reader.readUInt(32),
+			expire:  reader.readUInt(32),
+			minimum: reader.readUInt(32),
+		} as IRDataSOA;
+	}
+
+	static toBuffer(writer: BufferIO, record: IRDataSOA) {
+		var len = 0;
+		len += DnsDomain.getLength(record.mName);
+		len += DnsDomain.getLength(record.rName);
+		len += (32 * 5) / 8;
+		writer.writeUInt(len, 16);
+
+		DnsDomain.toBuffer(writer, record.mName);
+		DnsDomain.toBuffer(writer, record.rName);
+		writer.writeUInt(record.serial,  32);
+		writer.writeUInt(record.refresh, 32);
+		writer.writeUInt(record.retry,   32);
+		writer.writeUInt(record.expire,  32);
+		writer.writeUInt(record.minimum, 32);
+	}
+}
+
 /**
  * [SRV description]
  * @type {Object}
  * @docs https://tools.ietf.org/html/rfc2782
  */
-Packet.Resource.SRV = {
-  decode: function(reader, length){
-    this.priority = reader.read(16);
-    this.weight   = reader.read(16);
-    this.port     = reader.read(16);
-    this.target   = Packet.Name.decode(reader);
-    return this;
-  },
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    writer.write(record.priority, 16);
-    writer.write(record.weight  , 16);
-    writer.write(record.port    , 16);
-    writer.write(record.target  , 16);
-    return writer.toBuffer();
-  }
-};
+// class RDataSRV {
+// 	static fromBuffer(reader: BufferIO, length: number): IRDataSRV {
+// 		return {
+// 			priority: reader.readUInt(16),
+// 			weight:   reader.readUInt(16),
+// 			port:     reader.readUInt(16),
+// 			target:   DnsDomain.fromBuffer(reader),
+// 		} as IRDataSRV
+// 	}
+
+// 	static toBuffer(writer: BufferIO, record: IRDataSRV) {
+// 		writer.writeUInt(record.priority, 16)
+// 		writer.writeUInt(record.weight  , 16)
+// 		writer.writeUInt(record.port    , 16)
+// 		writer.writeUInt(record.target  , 16)
+// 	}
+// };
 
 
-Packet.Resource.CAA = {
-  encode: function(record, writer){
-    writer = writer || new Packet.Writer();
-    writer.write(record.flags, 8)
-    writer.write((record.tag.length), 8)
-    var buffer = new Buffer(record.tag + record.value, 'utf8');
-    buffer.forEach(function(c){
-      writer.write(c, 8);
-    });
-    return writer.toBuffer();
-  }
-};
+// class RDataCAA {
+// 	static toBuffer(writer: BufferIO, record: IRDataCAA) {
+// 		writer.writeUInt(record.flags, 8)
+// 		writer.writeUInt((record.tag.length), 8)
+// 		var buffer = new Buffer(record.tag + record.value, 'utf8');
+// 		buffer.forEach(function(c){
+// 			writer.writeUInt(c, 8)
+// 		})
+// 	}
+// }
 
-Packet.Reader = BufferReader;
-Packet.Writer = BufferWriter;
-module.exports = Packet;
+/**
+ * @var {[key: RecordType]: class}
+ */
+const ResourceRecordHandlers: {[key in RecordType]?: any} = {
+	[RecordType.A]: RDataA,
+	[RecordType.NS]: RDataNS,
+	// [RecordType.MD]: RDataMD,
+	// [RecordType.MF]: RDataMF,
+	[RecordType.CNAME]: RDataCNAME,
+	[RecordType.SOA]: RDataSOA,
+	// [RecordType.MB]: RDataMB,
+	// [RecordType.MG]: RDataMG,
+	// [RecordType.MR]: RDataMR,
+	// [RecordType.NULL]: RDataNULL,
+	// [RecordType.WKS]: RDataWKS,
+	// [RecordType.PTR]: RDataPTR,
+	// [RecordType.HINFO]: RDataHINFO,
+	// [RecordType.MINFO]: RDataMINFO,
+	[RecordType.MX]: RDataMX,
+	[RecordType.TXT]: RDataTXT,
+}
+
+/**
+ * Resource record format
+ * @docs https://tools.ietf.org/html/rfc1035#section-4.1.3
+ */
+class DnsResourceRecord {
+	/**
+	 * [parse description]
+	 * @param  {[type]} reader [description]
+	 * @return {[type]}        [description]
+	 */
+	static fromBuffer(reader: BufferIO): IResourceRecord {
+		let name = DnsDomain.fromBuffer(reader);
+		let type: RecordType = reader.readUInt(16);
+		let recordClass = reader.readUInt(16);
+		let ttl = reader.readUInt(32);
+		let rdLength = reader.readUInt(16);
+		let rdata = null;
+
+		if (ResourceRecordHandlers[type]) {
+			rdata = ResourceRecordHandlers[type].fromBuffer(reader, rdLength);
+		} else {
+			console.error('node-dns > unknown parser type: (%j)', type);
+			reader.seek( reader.getOffsetBits() + (8 * rdLength) );
+		}
+
+		let resource: IResourceRecord = {
+			name,
+			type,
+			class: recordClass,
+			ttl,
+			rdLength,
+			rdata
+		};
+
+		return resource;
+	}
+
+	/**
+	 * [encode description]
+	 * @param  {[type]} resource [description]
+	 * @param  {[type]} writer   [description]
+	 * @return {[type]}          [description]
+	 */
+	static toBuffer(writer: BufferIO, resource: IResourceRecord) {
+		DnsDomain.toBuffer(writer, resource.name);
+		writer.writeUInt(resource.type,  16);
+		writer.writeUInt(resource.class, 16);
+		writer.writeUInt(resource.ttl,   32);
+
+		if (ResourceRecordHandlers[resource.type]) {
+			return ResourceRecordHandlers[resource.type].toBuffer(writer, resource);
+		} else {
+			console.error('node-dns > unknown encoder %s(%j)', resource.type, resource.type);
+		}
+	};
+}

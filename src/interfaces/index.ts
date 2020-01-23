@@ -1,31 +1,50 @@
-import { string } from "prop-types";
+import { UserInterfaceHandler } from "../uiHandlers/UserInterfaceHandler";
 
-// export interface IService {
-// 	serviceMethods: Set<string>;
-// 	initialize( params: any[] ): Promise<boolean>;
-// }
+export type IContext = 'incoming' | 'outgoing';
 
-// export interface IServiceMetadata {
-// 	serviceId : number;
-// }
+export enum UITypes {
+	KeyValues,
+	Enum,
+	String,
+	Host,
+	Bytes,
+	Table,
+	Boolean,
+	Object,
+}
 
-// export interface IServiceCall {
-// 	type: 'request' | 'response';
-// 	promiseId?: number;
-// 	body: {
-// 		serviceId: number,
-// 		action: string,
-// 		params: any[]
-// 	};
-// }
+export interface IUserInterface {
+	location: 'short' | 'extra';
+	type: UITypes;
+	name: string;
+
+	shortDescription?: string;
+	allowedValues?: any[];
+	contextType?: IContext;
+	components?: IUserInterface[];
+}
 
 export enum IComponentTypes {
 	KeyValues,
 	Enum,
 	String,
 	Host,
-	Bytes
-} 
+	Bytes,
+	Table,
+	Boolean,
+	Object,
+}
+
+export var DefaultComponentUI: { [key in IComponentTypes]: UITypes } = {
+	[IComponentTypes.KeyValues]: UITypes.KeyValues,
+	[IComponentTypes.Enum]: UITypes.Enum,
+	[IComponentTypes.String]: UITypes.String,
+	[IComponentTypes.Host]: UITypes.Host,
+	[IComponentTypes.Bytes]: UITypes.Bytes,
+	[IComponentTypes.Table]: UITypes.Table,
+	[IComponentTypes.Boolean]: UITypes.Boolean,
+	[IComponentTypes.Object]: UITypes.Object,
+}
 
 export interface IComponent {
 	name: string;
@@ -34,11 +53,14 @@ export interface IComponent {
 
 	default: any;
 	allowedValues?: any[];
+	components?: IComponent[];
+	ui?: IUserInterface | 'short' | 'extra';
 }
 
 export interface IProtocolMetadata {
 	id: string;
 	components: IComponent[];
+	extraHandlers?: UserInterfaceHandler<any>[];
 }
 
 export enum ITransactionState {
@@ -58,29 +80,11 @@ export interface ITransaction {
 	components: { [name: string]: any };
 }
 
-export enum UITypes {
-	KeyValues,
-	Enum,
-	String,
-	Host,
-	Bytes
-}
-
-export interface IUserInterface {
-	location: 'short' | 'extra';
-	type: UITypes;
-	name: string;
-
-	allowedValues?: any[];
-}
-
 export interface IVisualizationItem {
 	handlerId: number;
 	ui: IUserInterface;
 	value: any;
 }
-
-export type IContext = 'incoming' | 'outgoing';
 
 export interface IVisualization {
 	context: IContext;

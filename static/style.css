@@ -62,6 +62,17 @@ textarea {
 	width: 300px;
 }
 
+.consoleLine input[type="checkbox"] {
+    width: auto;
+    vertical-align: text-top;
+}
+
+.consoleLine label {
+    margin: 0px 10px;
+    padding: 3px 5px 3px 3px;
+    background: var(--vscode-button-background);
+}
+
 .optionsLine {
 	margin: 10px 0px;
 }

@@ -1,5 +1,5 @@
 import { UITypes, ITransaction, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../UserInterfaceHandler";
+import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
 export class VerbsComponent extends UserInterfaceHandler<string> {

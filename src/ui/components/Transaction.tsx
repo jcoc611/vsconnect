@@ -68,7 +68,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		} = this.props;
 
 		if (visualization.context === 'outgoing') {
-			short.push(<Dropdown value={visualization.transaction.protocolId}
+			short.push(<Dropdown name={'Protocols'} value={visualization.transaction.protocolId}
 				allowedValues={allProtocols} readOnly={readOnly} onChange={setProtocol} />);
 		}
 

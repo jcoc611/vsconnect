@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ServiceAction, IServiceCall, IServiceResult } from './interfaces';
 import { Services } from './Services';
+import { registerBuiltins } from './registerBuiltins';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
@@ -97,6 +98,7 @@ class CatCodingPanel {
 		);
 
 		this.services = new Services();
+		registerBuiltins(this.services);
 		this.services.on('message', (action: ServiceAction) => {
 			let svcCall: IServiceCall = {
 				type: 'call',

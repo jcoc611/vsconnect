@@ -1,4 +1,4 @@
-import { ITransaction, IUserInterface, KeyValues, IContext } from "./interfaces";
+import { ITransaction, IUserInterface, KeyValues, IContext } from "../interfaces";
 
 export abstract class UserInterfaceHandler<T> {
 	abstract getUI(transaction: ITransaction): IUserInterface;

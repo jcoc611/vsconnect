@@ -6,6 +6,8 @@ import { StringInput } from './visualizationItems/StringInput';
 import { AbstractItem, AbstractItemProps } from './visualizationItems/AbstractItem';
 import { Dropdown } from './visualizationItems/Dropdown';
 import { Textarea } from './visualizationItems/Textarea';
+import { BooleanInput } from './visualizationItems/BooleanInput';
+import { TableEdit } from './visualizationItems/TableEdit';
 
 interface VisualizationItemProps {
 	onChange?: (viz: IVisualizationItem) => void;
@@ -48,13 +50,23 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, {
 			case UITypes.Bytes:
 				ElementType = Textarea;
 				break;
+
+			case UITypes.Table:
+				ElementType = TableEdit;
+				break;
+
+			case UITypes.Boolean:
+				ElementType = BooleanInput;
+				break;
 		}
 
 		if (ElementType === undefined) {
 			return '';
 		}
 
-		return <ElementType value={item.value} readOnly={readOnly} onChange={this.handleChange}
+		return <ElementType name={item.ui.name} value={item.value} readOnly={readOnly}
+			onChange={this.handleChange}
+			components={item.ui.components}
 			allowedValues={item.ui.allowedValues} />;
 	}
 }

@@ -1,10 +1,13 @@
 const request = require( 'request-promise-native' );
 import { Response } from "request";
 
-import { ITransaction, KeyValues, ITransactionState, IProtocolMetadata, IComponentTypes } from '../../interfaces';
+import { ITransaction, KeyValues, ITransactionState, IProtocolMetadata, IComponentTypes, UITypes } from '../../interfaces';
 
 import { ProtocolHandler } from '../../ProtocolHandler';
 import { getComponent } from "../../utils/transactionTools";
+import { QueryComponent } from "./components/Query";
+import { StatusTextComponent } from "./components/StatusText";
+import { URLComponent } from "./components/URL";
 
 export class HTTP extends ProtocolHandler {
 	static fromNativeResponse( response : Response ): ITransaction {
@@ -48,7 +51,8 @@ export class HTTP extends ProtocolHandler {
 						'DELETE', 'CONNECT', 'OPTIONS',
 						'TRACE', 'PATCH'
 					],
-					default: 'GET'
+					default: 'GET',
+					ui: 'short'
 				},
 				{
 					name: 'host',
@@ -63,16 +67,35 @@ export class HTTP extends ProtocolHandler {
 					default: ''
 				},
 				{
+					name: 'tls',
+					type: IComponentTypes.Object,
+					required: true,
+					default: {
+						enabled: false
+					},
+					components: [
+						{
+							name: 'enabled',
+							type: IComponentTypes.Boolean,
+							default: false,
+							required: true
+						},
+						// TODO versions, cipher suites
+					],
+				},
+				{
 					name: 'headers',
 					type: IComponentTypes.KeyValues,
 					required: false,
-					default: []
+					default: [],
+					ui: 'extra'
 				},
 				{
 					name: 'body',
 					type: IComponentTypes.Bytes,
 					required: false,
-					default: ''
+					default: '',
+					ui: 'extra',
 				},
 				{
 					name: 'version',
@@ -81,6 +104,11 @@ export class HTTP extends ProtocolHandler {
 					default: '1.1'
 				}
 			],
+			extraHandlers: [
+				new QueryComponent(),
+				new StatusTextComponent(),
+				new URLComponent(),
+			]
 		};
 	}
 
@@ -93,17 +121,9 @@ export class HTTP extends ProtocolHandler {
 		}
 
 		// TODO validation
-		let uri: string = 'http://' + getComponent<string>(transaction, 'host')
+		let uri: string = getComponent<string>(transaction, 'host')
 			+ getComponent<string>(transaction, 'path');
 
-		console.log({
-			resolveWithFullResponse: true,
-			simple: false,
-
-			method: getComponent(transaction, 'verb'),
-			headers: headersObj,
-			uri: uri,
-		});
 		request( {
 			resolveWithFullResponse: true,
 			simple: false,

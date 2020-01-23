@@ -21,6 +21,14 @@ export class BufferIO {
 		this.offset = 0;
 	}
 
+	seek(offset: number) {
+		this.offset = offset;
+	}
+
+	getOffsetBits(): number {
+		return this.offset;
+	}
+
 	readUInt(size: BufferNumberSizes): number {
 		let result = 0;
 		let offsetBytes = ~~(this.offset / 8);
@@ -28,15 +36,15 @@ export class BufferIO {
 		let isAligned: boolean = (offsetUnaligned == 0);
 
 		if (size == 32 && isAligned) {
-			result = this.buffer.readUInt32BE(this.offset);
+			result = this.buffer.readUInt32BE(offsetBytes);
 		} else if (size == 16 && isAligned) {
-			result = this.buffer.readUInt16BE(this.offset);
+			result = this.buffer.readUInt16BE(offsetBytes);
 		} else if (size == 8 && isAligned) {
-			result = this.buffer.readUInt8(this.offset);
+			result = this.buffer.readUInt8(offsetBytes);
 		} else if (size < 8) {
 			if (size + offsetUnaligned > 8) {
-                throw new Error(`Unaligned buffer access on size ${size} and offset ${offsetUnaligned}`);
-            }
+				throw new Error(`Unaligned buffer access on size ${size} and offset ${offsetUnaligned}`);
+			}
 			// EXAMPLE
 			// offset   1
 			// read     1
@@ -46,8 +54,9 @@ export class BufferIO {
 			// result =  0  1  0  0  0  0  0  0
 			result = this.buffer.readUInt8(offsetBytes);
 
+			// although result has int8, it likely is int32 in JVM, need to cap it to 8
 			// result =  1  0  0  0  0  0  0  0
-			result = result << offsetUnaligned;
+			result = (result << offsetUnaligned) & 0b11111111;
 
 			// result =  0  0  0  0  0  0  0  1
 			result = result >> (8 - size);

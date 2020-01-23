@@ -2,7 +2,7 @@
 [  ] UX for typing URI and sending request is good
 	[OK] Autofocus
 	[  ] Enter to send
-[  ] Branding consistent "VSConnect"
+[OK] Branding consistent "VSConnect"
 [OK] Design great
 
 ## HTTP
@@ -26,6 +26,13 @@ Just the basics of HTTP
 # Next Iteration
 [  ] Validation
 
+## UI
+[  ] New elements
+	[  ] Bytes
+	[  ] Table
+	[  ] Boolean
+	[  ] Object
+
 ## HTTP
 [  ] Auth
 	[  ] OAuth v1
@@ -33,6 +40,7 @@ Just the basics of HTTP
 [  ] Body
 	[  ] Form Data
 	[  ] Multipart form data
+	[  ] File upload
 
 ## DNS
 Proof of concept of a different protocol
