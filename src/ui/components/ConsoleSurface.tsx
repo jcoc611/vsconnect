@@ -52,6 +52,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 
 			return <Transaction
 				index={index}
+				key={reqCount + resCount}
 				readOnly={true}
 				visualization={item}
 				allProtocols={allProtocols}
@@ -64,6 +65,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 		content.push(
 			<Transaction
 				index={++reqCount}
+				key={reqCount + resCount}
 				readOnly={false}
 				visualization={currentRequest}
 				allProtocols={allProtocols}

@@ -1,20 +1,21 @@
 {
 	"name": "vsconnect",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "The ultimate network client for VS Code",
 	"main": "./out/extension.js",
 	"engines": {
-		"vscode": "^1.38.0"
+		"vscode": "^1.39.0"
 	},
+	"publisher": "jcoc611",
+	"preview": true,
 	"activationEvents": [
-		"onCommand:catCoding.start",
-		"onCommand:catCoding.doRefactor",
-		"onWebviewPanel:catCoding"
+		"onCommand:vsConnectClient.start",
+		"onWebviewPanel:vsConnectClient"
 	],
 	"contributes": {
 		"commands": [
 			{
-				"command": "catCoding.start",
+				"command": "vsConnectClient.start",
 				"title": "Open a new VSConnect Tab",
 				"category": "VSConnect"
 			}
@@ -22,11 +23,13 @@
 	},
 	"scripts": {
 		"compile": "tsc -p ./ && webpack",
+		"compile-extension": "tsc -p ./",
+		"package": "vsce package",
 		"lint": "tslint -p ./",
 		"watch": "tsc -w -p ./ && webpack --watch",
 		"watch-webpack": "webpack --watch"
 	},
-	"author": "Juan Osorio <Osorio.Juan@microsoft.com>",
+	"author": "Juan Osorio <jcoc611@gmail.com>",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/classnames": "^2.2.9",
@@ -39,6 +42,7 @@
 		"ts-loader": "^6.2.1",
 		"tslint": "^5.20.0",
 		"typescript": "^3.6.4",
+		"vsce": "^1.75.0",
 		"webpack": "^4.41.2",
 		"webpack-cli": "^3.3.9"
 	},

@@ -23,6 +23,7 @@ interface TransactionState {
 
 interface TransactionElements {
 	short: JSX.Element[];
+	headers: IVisualizationItem[];
 	extra: { [name: string]: JSX.Element };
 }
 
@@ -31,18 +32,21 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 
 	constructor(props: TransactionProps) {
 		super(props);
-		const isIncoming = (props.visualization.context === 'incoming');
 
 		this.state = {
 			isExpanded: true,
-			openTab: (isIncoming)? this.getFirstExtraName(props): null
+			openTab: this.getFirstExtraName(props)
 		};
 	}
 
 	componentWillReceiveProps(props: TransactionProps) {
-		if (props.visualization.context === 'incoming' && this.state.openTab === null) {
-			this.setState({ openTab: this.getFirstExtraName(props) });
+		const { isExpanded } = this.state;
+		for (let item of props.visualization.items) {
+			if (item.ui.name === this.state.openTab)
+				return;
 		}
+
+		this.setState({ isExpanded, openTab: this.getFirstExtraName(props) });
 	}
 
 	private getFirstExtraName(props: TransactionProps): string | null {
@@ -50,13 +54,13 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		if (extraItems.length === 0) {
 			return null;
 		} else {
-			console.log('selecting tab', extraItems[0].ui.name, props.visualization);
 			return extraItems[0].ui.name;
 		}
 	}
 
 	private getTransactionElements(): TransactionElements {
 		let short: JSX.Element[] = [];
+		let headers: IVisualizationItem[] = [];
 		let extra: { [name: string]: JSX.Element } = {};
 
 		const {
@@ -68,17 +72,22 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		} = this.props;
 
 		if (visualization.context === 'outgoing') {
-			short.push(<Dropdown name={'Protocols'} value={visualization.transaction.protocolId}
+			short.push(<Dropdown name='Protocols' key='Protocols'
+				value={visualization.transaction.protocolId}
 				allowedValues={allProtocols} readOnly={readOnly} onChange={setProtocol} />);
+		} else {
+			short.push(<span>{visualization.transaction.protocolId}</span>);
 		}
 
 		for (let item of visualization.items) {
 			let itemElement = <VisualizationItem
+				key={item.ui.name}
 				item={item} readOnly={readOnly} onChange={this.handleUIChange} />;
 
 			if (item.ui.location === "short") {
 				short.push(itemElement);
 			} else {
+				headers.push(item);
 				extra[item.ui.name] = itemElement;
 			}
 		}
@@ -87,35 +96,38 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			short.push(<button onClick={sendCurrentRequest}>send</button>);
 		}
 
-		return { short, extra };
+		return { short, headers, extra };
 	}
 
 	handleUIChange = (viz: IVisualizationItem): void => {
 		this.props.updateUI(viz, this.props.visualization.transaction);
 	}
 
-	renderExtraTab = (extraName: string): JSX.Element => {
-		return <button onClick={() => this.setOpenTab(extraName)}
-			className={(this.state.openTab === extraName)? 'selected': ''}>{extraName}</button>;
+	renderExtraTab = (item: IVisualizationItem): JSX.Element => {
+		let count;
+		if (item.ui.count)
+			count = <span className='count'>{item.ui.count}</span>;
+
+		return <button onClick={() => this.setOpenTab(item.ui.name)}
+			className={(this.state.openTab === item.ui.name)? 'selected': ''}>{[item.ui.name, count]}</button>;
 	}
 
 	setOpenTab = (openTab: string) => {
-		this.setState({ openTab });
+		this.setState({ isExpanded: this.state.isExpanded, openTab });
 	}
 
 	render() {
-		const { isExpanded } = this.state;
+		const { isExpanded, openTab } = this.state;
 		const { visualization, index } = this.props;
-		const { short, extra } = this.getTransactionElements();
+		const { short, headers, extra } = this.getTransactionElements();
 		const type = (visualization.context === 'incoming')? 'res': 'req';
 		let optionContent: React.ReactNode;
-		let optionsLine: React.ReactNode;
+		let optionsLine: JSX.Element[] = [];
 
 		if ( isExpanded ) {
-			optionsLine = Object.keys(extra).map(this.renderExtraTab);
-			if (this.state.openTab !== null) {
-				optionContent = extra[this.state.openTab];
-			}
+			optionsLine = headers.map(this.renderExtraTab);
+			if (openTab !== null)
+				optionContent = extra[openTab];
 		}
 
 		const resClasses = classNames({

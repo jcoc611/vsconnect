@@ -1,14 +1,7 @@
-import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI } from "./interfaces";
+import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI, UITypes } from "./interfaces";
 import { ProtocolHandler } from "./ProtocolHandler";
 import { UserInterfaceHandler } from "./uiHandlers/UserInterfaceHandler";
 import { EventEmitter } from "./utils/EventEmitter";
-import { HTTP } from "./protocols/HTTP/HTTP.protocol";
-import { QueryComponent } from "./protocols/HTTP/components/Query";
-import { URLComponent } from "./protocols/HTTP/components/URL";
-import { HeadersComponent } from "./protocols/HTTP/components/Headers";
-import { VerbsComponent } from "./protocols/HTTP/components/Verbs";
-import { BodyComponent } from "./protocols/HTTP/components/Body";
-import { StatusTextComponent } from "./protocols/HTTP/components/StatusText";
 import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
 
 //-----------------------------------------------------------------------------------
@@ -72,6 +65,12 @@ export class Services extends EventEmitter {
 		let metadata = handler.getMetadata();
 		for (let z = 0; z < metadata.components.length; z++) {
 			let component = metadata.components[z];
+
+			if (component instanceof UserInterfaceHandler) {
+				this.addUIHandler(component);
+				continue;
+			}
+
 			if (component.ui === undefined) {
 				continue;
 			}
@@ -103,12 +102,6 @@ export class Services extends EventEmitter {
 			}
 
 			this.addUIHandler( new UISimpleHandler(name, ui) );
-		}
-
-		if (metadata.extraHandlers) {
-			for (let z = 0; z < metadata.extraHandlers.length; z++) {
-				this.addUIHandler(metadata.extraHandlers[z]);
-			}
 		}
 
 		this.protocols.set(name, handler);
@@ -154,6 +147,7 @@ export class Services extends EventEmitter {
 
 	getVisualization(context: IContext, transaction: ITransaction): IVisualization {
 		let items: IVisualizationItem[] = [];
+		let groupItems: { [key: string]: number } = {};
 
 		for (let i = 0; i < this.uiHandlers.length; i++) {
 			const handler = this.uiHandlers[i];
@@ -161,11 +155,37 @@ export class Services extends EventEmitter {
 				continue;
 			}
 
-			items.push({
+			const ui = handler.getUI(transaction);
+			const viz: IVisualizationItem = {
 				handlerId: i,
-				ui: handler.getUI(transaction),
+				ui,
 				value: handler.getValueFromTransaction( transaction )
-			});
+			};
+			if (ui.location === 'extra' && groupItems[ui.name]) {
+				if (items[groupItems[ui.name]].ui.type == UITypes.OneOfMany) {
+					if (items[groupItems[ui.name]].ui.count === undefined)
+						items[groupItems[ui.name]].ui.count = ui.count;
+
+					items[groupItems[ui.name]].value.push(viz);
+				} else {
+					items[groupItems[ui.name]] = {
+						handlerId: -1,
+						ui: {
+							location: 'extra',
+							type: UITypes.OneOfMany,
+							name: ui.name,
+							contextType: ui.contextType,
+							count: items[groupItems[ui.name]].ui.count || ui.count,
+						},
+						value: [ items[groupItems[ui.name]], viz ]
+					}
+				}
+				continue;
+			} else {
+				groupItems[ui.name] = items.length;
+			}
+
+			items.push(viz);
 		}
 
 		return {
@@ -179,6 +199,19 @@ export class Services extends EventEmitter {
 		viz: IVisualizationItem,
 		currentTransaction: ITransaction
 	): ITransaction {
-		return this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, currentTransaction);
+		let newTransaction = this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, currentTransaction);
+
+		// TODO: in certain cases, this is not enough. Issues when multiple components should
+		// recompute and the expected output is given by calling one or more handlers twice.
+		for (let handler of this.uiHandlers) {
+			if (handler.shouldRecompute(currentTransaction, newTransaction)) {
+				newTransaction = handler.getTransactionFromValue(
+					handler.getValueFromTransaction(newTransaction),
+					newTransaction
+				);
+			}
+		}
+
+		return newTransaction;
 	}
 }

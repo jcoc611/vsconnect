@@ -67,6 +67,10 @@ export class TableEdit extends AbstractItem<any[][]> {
 		let content: JSX.Element[] = [];
 
 		let header: JSX.Element = <thead></thead>;
+
+		if (readOnly && value.length == 0)
+			return <div className="kvedit">No items</div>;
+
 		if (components) {
 			header = this.renderHeader(components);
 		}

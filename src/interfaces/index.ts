@@ -11,6 +11,10 @@ export enum UITypes {
 	Table,
 	Boolean,
 	Object,
+
+	// Collections
+	OneOfMany,
+	Form,
 }
 
 export interface IUserInterface {
@@ -22,6 +26,8 @@ export interface IUserInterface {
 	allowedValues?: any[];
 	contextType?: IContext;
 	components?: IUserInterface[];
+	count?: string;
+	subName?: string;
 }
 
 export enum IComponentTypes {
@@ -59,8 +65,7 @@ export interface IComponent {
 
 export interface IProtocolMetadata {
 	id: string;
-	components: IComponent[];
-	extraHandlers?: UserInterfaceHandler<any>[];
+	components: (IComponent | UserInterfaceHandler<any>)[];
 }
 
 export enum ITransactionState {

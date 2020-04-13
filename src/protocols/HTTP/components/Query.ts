@@ -3,6 +3,19 @@ import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
 export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
+	private uiName: string;
+	private componentName: string;
+	private isURI: boolean;
+	private uiSubName?: string;
+
+	constructor(uiName: string, componentName: string, isURI: boolean, uiSubName?: string) {
+		super();
+		this.uiName = uiName;
+		this.componentName = componentName;
+		this.isURI = isURI;
+		this.uiSubName = uiSubName;
+	}
+
 	defaultValue(): KeyValues<string> {
 		return [];
 	}
@@ -10,35 +23,43 @@ export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
 	getUI(transaction: ITransaction): IUserInterface {
 		return {
 			type: UITypes.KeyValues,
-			name: 'Query',
-			location: 'extra'
+			name: this.uiName,
+			subName: this.uiSubName,
+			location: 'extra',
+			count: String(this.getValueFromTransaction(transaction).length)
 		}
 	}
 
 	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return hasComponent(transaction, 'path');
+		return context === 'outgoing' && hasComponent(transaction, this.componentName);
 	}
 
 	getTransactionFromValue(
 		newValue: KeyValues<string>,
 		currentTransaction: ITransaction
 	): ITransaction {
-		let path = getComponent<string>(currentTransaction, 'path');
-		let rootPath = path.substr( 0, path.indexOf('?') );
-		let newPath = rootPath + '?' + this.serializeQuery(newValue);
+		let currentStr = getComponent<string>(currentTransaction, this.componentName);
+		let newStr: string;
+		if (this.isURI) {
+			let queryIndex = currentStr.indexOf('?');
+			let rootPath = (queryIndex >= 0) ? currentStr.substr(0, queryIndex) : currentStr;
+			newStr = rootPath + '?' + this.serializeQuery(newValue);
+		} else {
+			newStr = this.serializeQuery(newValue);
+		}
 
-		return setComponent(currentTransaction, 'path', newPath);
+		return setComponent(currentTransaction, this.componentName, newStr);
 	}
 
 	getValueFromTransaction(
 		newTransaction: ITransaction
 	): KeyValues<string> {
-		return this.parseQuery( getComponent(newTransaction, 'path') );
+		return this.parseQuery( getComponent(newTransaction, this.componentName) );
 	}
 
 	private parseQuery(endpoint: string): KeyValues<string> {
-		let queryStarts = endpoint.indexOf('?');
-		if (queryStarts < 0) {
+		let queryStarts = (this.isURI)? endpoint.indexOf('?'): -1;
+		if (this.isURI && queryStarts < 0) {
 			return [];
 		}
 

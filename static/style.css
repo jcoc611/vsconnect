@@ -3,12 +3,36 @@ body {
 }
 
 button {
+	font-family: var(--vscode-font-family);
 	background-color: var(--vscode-button-background);
 	color: var(--vscode-button-foreground);
-	border:0;
+	border: 1px solid var(--vscode-button-hoverbackground);
 	outline:0;
 	border-radius: 2px;
 	padding: 4px 8px;
+}
+
+button.btn-default {
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	border-radius: 2px;
+	box-sizing: border-box;
+	cursor: default;
+	outline: none;
+	transition: all 200ms ease;
+	line-height: 1.5em;
+	margin-right: 5px;
+	padding: 2px 5px !important;
+}
+
+button.btn-default:hover {
+	filter: brightness(125%);
+}
+
+button.btn-default span {
+	font-family: Consolas, 'Courier New', monospace;
+	font-size: 1.2em;
+	line-height: 1;
 }
 
 textarea {
@@ -24,22 +48,44 @@ textarea {
 }
 
 .optionsLine button {
-	color: var(--vscode-activityBar-inactiveForeground);
-	background: transparent;
-	border: 1px solid var(--vscode-activityBar-inactiveForeground);
+	background: var(--vscode-tab-inactiveBackground);
+	color: var(--vscode-tab-inactiveForeground);
+	/* border: 1px solid var(--vscode-activityBar-inactiveForeground); */
+	border: 1px solid transparent;
 	margin: 0px 5px 0px 0px;
 	font-size: 0.9em;
 	padding: 3px 6px;
 }
 
-.optionsLine button:hover, .optionsLine button.selected {
+.optionsLine button:hover {
 	color: var(--vscode-button-foreground);
-	background: var(--vscode-button-background);
+	background: var(--vscode-tab-hoverBackground);
 	border: 1px solid var(--vscode-button-background);
 }
 
+.response .optionsLine button {
+	/* border: 1px solid var(--vscode-tab-border); */
+	background: var(--vscode-tab-inactiveBackground);
+	color: var(--vscode-tab-inactiveForeground);
+}
+
+.optionsLine button.selected {
+	background: var(--vscode-tab-activeBackground);
+	color: var(--vscode-tab-activeForeground);
+	border-bottom: 1px solid var(--vscode-tab-activeBorder);
+	border-top: 1px solid var(--vscode-tab-activeBorderTop);
+}
+
+.ansiGreen {
+	color: var(--vscode-terminal-ansiGreen);
+}
+
+.ansiForeground {
+	color: var(--vscode-terminal-foreground);
+}
+
 #content {
-	margin: 5px;
+	margin: 5px 5px 50px;
 }
 
 .consoleLine {
@@ -62,25 +108,82 @@ textarea {
 	width: 300px;
 }
 
+.consoleLine input:focus {
+	border-color: var(--vscode-titleBar-activeBackground) !important;
+}
+
+.request .consoleLine input, .request .consoleLine span.stringInput {
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	border-radius: 2px;
+	padding: 6px 5px 3px;
+	margin-right: 5px;
+}
+
+.request .consoleLine span.stringInput {
+	display: inline-block;
+	min-width: 300px;
+	padding: 1px 5px 0px 5px;
+}
+
 .consoleLine input[type="checkbox"] {
-    width: auto;
-    vertical-align: text-top;
+	width: auto;
+	vertical-align: text-top;
 }
 
 .consoleLine label {
-    margin: 0px 10px;
-    padding: 3px 5px 3px 3px;
-    background: var(--vscode-button-background);
+	margin: 0px 10px;
+	padding: 3px 5px 3px 3px;
+	background: var(--vscode-button-background);
+}
+
+.consoleLine button {
+	padding: 5px 8px;
+	vertical-align: bottom;
 }
 
 .optionsLine {
-	margin: 10px 0px;
+	margin: 0px;
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	padding-left: 5px;
+}
+
+.optionContent input {
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	outline: 0;
+	padding: 5px;
+	box-sizing: border-box;
+}
+
+.request .optionsLine {
+	margin-top: 5px;
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	border-bottom: 0px;
 }
 
 .response .optionsLine {
-	margin-top: 0px;
 	margin-bottom: 5px;
-	background: var(--vscode-editorGroupHeader-tabsBackground);
+}
+
+.optionsLine button .count {
+	display: inline-block;
+	margin-left: 5px;
+	font-size: 0.8em;
+	padding: 0px 4px;
+	border-radius: 6px;
+	vertical-align: middle;
+	text-align: center;
+	color: #ddeefd;
+	mix-blend-mode: difference;
+}
+
+.request .optionContent {
+	padding: 5px;
+	padding-top: 10px;
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	border-top: 0px;
 }
 
 .request {
@@ -92,8 +195,8 @@ textarea {
 }
 
 .response .wrapper {
-	border-bottom: 1px solid var(--vscode-textSeparator-foreground);
 	border-left: 5px solid var(--vscode-terminal-background);
+	box-shadow: -4px 0px 8px #00000085;
 	flex-shrink: 1;
 	flex-grow: 1;
 	overflow: auto;
@@ -127,6 +230,7 @@ textarea {
 .response .optionContent {
 	margin-left: 5px;
 	margin-bottom: 5px;
+	padding-top: 10px;
 }
 
 .request .var, .response .var {
@@ -157,21 +261,10 @@ textarea {
 	padding: 2px 5px;
 }
 
-.response .optionsLine button {
-	border: 1px solid var(--vscode-tab-border);
-	background: var(--vscode-tab-inactiveBackground);
-	color: var(--vscode-tab-inactiveForeground);
-}
-
-.response .optionsLine button:hover {
-	background: var(--vscode-tab-hoverBackground);
-}
-
-.response .optionsLine button.selected {
-	background: var(--vscode-tab-activeBackground);
-	color: var(--vscode-tab-activeForeground);
-	border-bottom: 1px solid var(--vscode-tab-activeBorder);
-	border-top: 1px solid var(--vscode-tab-activeBorderTop);
+.response .consoleLine span {
+	color: var(--vscode-editorWidget-foreground);
+	display: inline-block;
+	padding: 2px 5px;
 }
 
 .suggestdropdown {
@@ -203,8 +296,10 @@ textarea {
 }
 
 .dropdown-control {
-	background-color: var(--vscode-dropdown-background);
-	color: var(--vscode-dropdown-foreground);
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
+	/* background-color: var(--vscode-dropdown-background);
+	color: var(--vscode-dropdown-foreground); */
 	border-radius: 2px;
 	box-sizing: border-box;
 	cursor: default;
@@ -277,6 +372,7 @@ textarea {
 
 /** Key Value Edit */
 .kvedit thead {
+	background: var(--vscode-editorGroupHeader-tabsBackground);
 	font-weight: bold;
 }
 
@@ -286,19 +382,44 @@ textarea {
 
 .kvedit tbody td input {
 	width: 100%;
-	background: var(--vscode-input-background);
-	color: var(--vscode-input-foreground);
 	border: 0;
-	outline: 0;
-	padding: 5px;
-	box-sizing: border-box;
+	background: var(--vscode-editor-background);
 }
 
 .kvedit td {
-	border: 1px solid var(--vscode-editor-background);
+	border: 1px solid var(--vscode-titleBar-inactiveBackground);
 }
 
 .kvedit table {
 	border-collapse: collapse;
 	border-spacing: 1px;
+}
+
+/** One of many */
+.oneOfMany-options {
+	margin: 0px 0px 10px;
+}
+
+.oneOfMany-options label {
+	margin-right: 10px;
+	user-select: none;
+	cursor: pointer;
+}
+
+.oneOfMany-options label input {
+	vertical-align: bottom;
+}
+
+/** Form */
+div.form .form-item {
+	margin: 5px;
+}
+
+div.form .form-item > span {
+	display: inline-block;
+	margin-right: 5px;
+	min-width: 150px;
+	font-size: 0.9em;
+	vertical-align: text-top;
+	color: var(--vscode-input-placeholderForeground);
 }

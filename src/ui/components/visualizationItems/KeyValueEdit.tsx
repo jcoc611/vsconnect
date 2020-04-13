@@ -48,10 +48,14 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 	}
 
 	renderRow(index: number, [key, value]: [string, string]) {
+		let keyWidth: string = Math.max(Math.min(key.length + 2, 150), 20) + 'ch';
+		let valueWidth: string = Math.max(Math.min(value.length + 2, 150), 20) + 'ch';
 		return <tr>
 			<td><input type="text" placeholder="Name" value={key} readOnly={this.props.readOnly}
+				style={({ width: keyWidth })}
 				onChange={(e) => this.updateKey(index, e.target.value)} /></td>
 			<td><input type="text" placeholder="Value" value={value} readOnly={this.props.readOnly}
+				style={({ width: valueWidth })}
 				onChange={(e) => this.updateValue(index, e.target.value)} /></td>
 		</tr>;
 	}
@@ -59,6 +63,9 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 	render() {
 		const { value, readOnly } = this.props;
 		let content: JSX.Element[] = [];
+
+		if (readOnly && value.length == 0)
+			return <div className="kvedit">No items</div>;
 
 		for (let i = 0; i < value.length; i++) {
 			content.push( this.renderRow(i, value[i]) );

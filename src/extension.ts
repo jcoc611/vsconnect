@@ -6,17 +6,17 @@ import { registerBuiltins } from './registerBuiltins';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
-		vscode.commands.registerCommand('catCoding.start', () => {
-			CatCodingPanel.createOrShow(context.extensionPath);
+		vscode.commands.registerCommand('vsConnectClient.start', () => {
+			VSConnectPanel.createOrShow(context.extensionPath);
 		})
 	);
 
 	if (vscode.window.registerWebviewPanelSerializer) {
 		// Make sure we register a serializer in activation event
-		vscode.window.registerWebviewPanelSerializer(CatCodingPanel.viewType, {
+		vscode.window.registerWebviewPanelSerializer(VSConnectPanel.viewType, {
 			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
 				console.log(`Got state: ${state}`);
-				CatCodingPanel.revive(webviewPanel, context.extensionPath);
+				VSConnectPanel.revive(webviewPanel, context.extensionPath);
 			}
 		});
 	}
@@ -25,13 +25,13 @@ export function activate(context: vscode.ExtensionContext) {
 /**
  * Manages cat coding webview panels
  */
-class CatCodingPanel {
+class VSConnectPanel {
 	/**
 	 * Track the currently panel. Only allow a single panel to exist at a time.
 	 */
-	public static currentPanel: CatCodingPanel | undefined;
+	public static currentPanel: VSConnectPanel | undefined;
 
-	public static readonly viewType = 'catCoding';
+	public static readonly viewType = 'vsConnectClient';
 
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionPath: string;
@@ -44,14 +44,14 @@ class CatCodingPanel {
 			: undefined;
 
 		// If we already have a panel, show it.
-		if (CatCodingPanel.currentPanel) {
-			CatCodingPanel.currentPanel._panel.reveal(column);
+		if (VSConnectPanel.currentPanel) {
+			VSConnectPanel.currentPanel._panel.reveal(column);
 			return;
 		}
 
 		// Otherwise, create a new panel.
 		const panel = vscode.window.createWebviewPanel(
-			CatCodingPanel.viewType,
+			VSConnectPanel.viewType,
 			'VSConnect: Client',
 			column || vscode.ViewColumn.One,
 			{
@@ -66,11 +66,12 @@ class CatCodingPanel {
 			}
 		);
 
-		CatCodingPanel.currentPanel = new CatCodingPanel(panel, extensionPath);
+		VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
 	}
 
 	public static revive(panel: vscode.WebviewPanel, extensionPath: string) {
-		CatCodingPanel.currentPanel = new CatCodingPanel(panel, extensionPath);
+		VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
+		panel.webview.html = VSConnectPanel.currentPanel._getHtmlForWebview(panel.webview);
 	}
 
 	private constructor(panel: vscode.WebviewPanel, extensionPath: string) {
@@ -129,7 +130,7 @@ class CatCodingPanel {
 	}
 
 	public dispose() {
-		CatCodingPanel.currentPanel = undefined;
+		VSConnectPanel.currentPanel = undefined;
 
 		// Clean up our resources
 		this._panel.dispose();

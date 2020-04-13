@@ -8,15 +8,21 @@ import { getComponent } from "../../utils/transactionTools";
 import { QueryComponent } from "./components/Query";
 import { StatusTextComponent } from "./components/StatusText";
 import { URLComponent } from "./components/URL";
+import { TLSComponent } from "./components/TLS";
+import { AuthBasicComponent } from "./components/AuthBasic";
+import { AuthOAuth1Component } from "./components/AuthOauth1";
+
+interface TLSComponentValue {
+	enabled: boolean;
+}
 
 export class HTTP extends ProtocolHandler {
 	static fromNativeResponse( response : Response ): ITransaction {
-		console.log('fromNativeRes', response);
 		let status = (response.statusCode)? `${response.statusCode}`: '';
 		let statusText = (response.statusMessage)? `${response.statusMessage}`: '';
 
 		let headerKV: KeyValues<string> = [];
-		for (let key of Object.keys(response.headers)) {
+		for (let key of Object.keys(response.headers).sort()) {
 			if (typeof (response.headers[key]) === 'string') {
 				headerKV.push([ key, response.headers[key] as string ]);
 			}
@@ -83,6 +89,20 @@ export class HTTP extends ProtocolHandler {
 						// TODO versions, cipher suites
 					],
 				},
+				new QueryComponent('query', 'path', true),
+				{
+					name: 'body',
+					type: IComponentTypes.Bytes,
+					required: false,
+					default: '',
+					ui: {
+						location: 'extra',
+						type: UITypes.Bytes,
+						name: 'body',
+						subName: 'raw'
+					},
+				},
+				new QueryComponent('body', 'body', false, 'x-www-form-urlencoded'),
 				{
 					name: 'headers',
 					type: IComponentTypes.KeyValues,
@@ -91,23 +111,16 @@ export class HTTP extends ProtocolHandler {
 					ui: 'extra'
 				},
 				{
-					name: 'body',
-					type: IComponentTypes.Bytes,
-					required: false,
-					default: '',
-					ui: 'extra',
-				},
-				{
 					name: 'version',
 					type: IComponentTypes.String,
 					required: true,
 					default: '1.1'
-				}
-			],
-			extraHandlers: [
-				new QueryComponent(),
+				},
 				new StatusTextComponent(),
 				new URLComponent(),
+				new TLSComponent(),
+				new AuthBasicComponent(),
+				new AuthOAuth1Component(),
 			]
 		};
 	}
@@ -121,8 +134,11 @@ export class HTTP extends ProtocolHandler {
 		}
 
 		// TODO validation
-		let uri: string = getComponent<string>(transaction, 'host')
-			+ getComponent<string>(transaction, 'path');
+		let host: string = getComponent<string>(transaction, 'host');
+		if (/(.*?:\/\/|)?([^\/]*)(.*)$/.exec(host)![1] === undefined)
+			host = (getComponent<TLSComponentValue>(transaction, 'tls').enabled)? 'https://' : 'http://' + host;
+
+		let uri: string =  host + getComponent<string>(transaction, 'path');
 
 		request( {
 			resolveWithFullResponse: true,
@@ -131,6 +147,7 @@ export class HTTP extends ProtocolHandler {
 			method: getComponent(transaction, 'verb'),
 			headers: headersObj,
 			uri: uri,
+			body: getComponent(transaction, 'body'),
 		} ).then( ( res: Response ) => {
 			this.trigger( 'response', HTTP.fromNativeResponse(res) );
 		} ).catch( (err: any) => {

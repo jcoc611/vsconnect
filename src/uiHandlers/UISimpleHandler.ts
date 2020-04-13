@@ -14,7 +14,27 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 	}
 
 	getUI(transaction: ITransaction): IUserInterface {
-		return this.uiSpec;
+		const currentValue: T = this.getValueFromTransaction(transaction);
+		let ui: IUserInterface = Object.assign({}, this.uiSpec);
+		if (Array.isArray(currentValue))
+			ui.count = `${currentValue.length}`;
+
+		if (typeof(currentValue) === 'string' && ui.type == UITypes.Bytes) {
+			let valLength = Buffer.byteLength(currentValue, 'utf8');
+
+			if (valLength < (1 << 10))
+				ui.count = `${valLength} B`;
+			else if (valLength < (1 << 20))
+				ui.count = `${(valLength / (1 << 10)).toFixed(2)} KB`;
+			else if (valLength < (1 << 30))
+				ui.count = `${(valLength / (1 << 20)).toFixed(2)} MB`;
+			else if (valLength < (1 << 40))
+				ui.count = `${(valLength / (1 << 30)).toFixed(2)} GB`;
+			else
+				ui.count = `${(valLength / (1 << 40)).toFixed(2)} TB`;
+		}
+
+		return ui;
 	}
 
 	shouldDisplay(context: IContext, transaction: ITransaction): boolean {

@@ -28,6 +28,7 @@ export class StateManager {
 	private vscode: any;
 	private pendingPromises: Map< number, DelegatedPromise<any> > = new Map();
 	private pendingPromiseCount: number = 0;
+	private historyWalkCurrent: number = -1;
 
 	private constructor() {
 		// @ts-ignore because function does not exist in dev environment
@@ -36,7 +37,6 @@ export class StateManager {
 
 		window.addEventListener( 'message', (event) => {
 			const message: IServiceMessage = event.data; // The json data that the extension sent
-			console.log('message', message);
 			if (message.type === 'result') {
 				if ( this.pendingPromises.has(message.promiseId) ) {
 					this.pendingPromises.get(message.promiseId)!.fulfill(message.result);
@@ -54,7 +54,33 @@ export class StateManager {
 			}
 		} );
 
-		this.addNewRequest();
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'ArrowUp' && this.historyWalkCurrent + 1 < this.reqCount) {
+				event.preventDefault();
+				this.historyWalkCurrent++;
+				this.duplicateFromHistory();
+			} else if (event.key === 'ArrowDown' && this.historyWalkCurrent >= 0) {
+				event.preventDefault();
+				this.historyWalkCurrent--;
+				this.duplicateFromHistory();
+			}
+		});
+
+		if (!this.attemptRestore())
+			this.addNewRequest();
+	}
+
+	toJSON() {
+		const {
+			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount, lastProtocol
+		} = this;
+
+		return encodeURI(JSON.stringify({
+			history, currentRequest,
+			reqInHistory: Array.from(reqInHistory.entries()),
+			resInHistory: Array.from(resInHistory.entries()),
+			reqCount, resCount, lastProtocol
+		}));
 	}
 
 	getHistory(): IVisualization[] {
@@ -86,7 +112,7 @@ export class StateManager {
 	async sendCurrentRequest() {
 		const currentRequest: IVisualization = this.getCurrentRequest();
 
-		// this.history.push(currentRequest);
+		this.lastProtocol = currentRequest.transaction.protocolId;
 		this.addRequest(currentRequest);
 		this.currentRequest = undefined;
 		await this.addNewRequest();
@@ -153,10 +179,9 @@ export class StateManager {
 	}
 
 	private addRequest(v: IVisualization): number {
-		this.reqCount++;
-
 		this.reqInHistory.set(this.reqCount, this.history.length);
 		this.history.push(v);
+		this.reqCount++;
 
 		// this.triggerChange();
 
@@ -164,10 +189,9 @@ export class StateManager {
 	}
 
 	private addResponse(v: IVisualization): number {
-		this.resCount++;
-
 		this.resInHistory.set(this.resCount, this.history.length);
 		this.history.push(v);
+		this.resCount++;
 
 		this.triggerChange();
 
@@ -196,9 +220,42 @@ export class StateManager {
 	}
 
 	private triggerChange() {
+		this.vscode.setState(this.toJSON());
 		const h = this.getHistory();
 		for ( let callback of this.changeListeners ) {
 			callback(h);
 		}
+	}
+
+	private attemptRestore(): boolean {
+		let prevState = this.vscode.getState();
+		if (prevState) {
+			prevState = JSON.parse(decodeURI(prevState));
+			this.history = prevState.history;
+			this.currentRequest = prevState.currentRequest;
+			this.reqInHistory = new Map(prevState.reqInHistory);
+			this.resInHistory = new Map(prevState.resInHistory);
+			this.reqCount = prevState.reqCount;
+			this.resCount = prevState.resCount;
+			this.lastProtocol = prevState.lastProtocol;
+
+			this.triggerChange();
+			return true;
+		}
+		return false;
+	}
+
+	private duplicateFromHistory(): void {
+		if (this.historyWalkCurrent < 0) {
+			this.addNewRequest();
+			return;
+		}
+
+		let reqIndex = this.reqCount - this.historyWalkCurrent - 1;
+		this.currentRequest = Object.assign(
+			{}, this.history[this.reqInHistory.get(reqIndex)!]
+		);
+		console.log(reqIndex, this.reqInHistory.get(reqIndex), this.currentRequest);
+		this.triggerChange();
 	}
 }

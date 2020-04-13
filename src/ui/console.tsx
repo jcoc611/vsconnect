@@ -18,5 +18,6 @@ state.getAllProtocols().then( (protocols) => {
 				updateUI={ state.updateUI.bind(state) } />,
 			document.getElementById("content-wrapper")
 		);
+		window.scrollTo(0,document.body.scrollHeight);
 	} );
 });

@@ -1,5 +1,6 @@
 import { ITransaction, ITransactionState, IProtocolMetadata } from './interfaces'
 import { EventEmitter } from './utils/EventEmitter';
+import { UserInterfaceHandler } from './uiHandlers/UserInterfaceHandler';
 
 export abstract class ProtocolHandler extends EventEmitter {
 	serviceMethods: Set<string> = new Set( [ 'do' ] );
@@ -28,7 +29,7 @@ export abstract class ProtocolHandler extends EventEmitter {
 		let components: { [name: string]: any } = {};
 
 		for (let componentDefinition of meta.components) {
-			if (componentDefinition.default !== undefined) {
+			if (!(componentDefinition instanceof UserInterfaceHandler) && componentDefinition.default !== undefined) {
 				components[componentDefinition.name] = componentDefinition.default;
 			}
 		}
