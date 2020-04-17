@@ -1,13 +1,27 @@
 {
 	"name": "vsconnect",
-	"version": "0.2.0",
-	"description": "The ultimate network client for VS Code",
+	"version": "0.2.1",
 	"main": "./out/extension.js",
 	"engines": {
 		"vscode": "^1.39.0"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jcoc611/vsconnect.git"
+	},
+
+	"displayName": "VSConnect",
 	"publisher": "jcoc611",
+	"description": "The ultimate network client for VS Code",
 	"preview": true,
+	"categories": [ "Other" ],
+	"keywords": [ "network", "client", "http", "dns", "utility", "postman" ],
+	"qna": "https://github.com/jcoc611/vsconnect/issues",
+	"galleryBanner": {
+		"color": "#302f33",
+		"theme": "dark"
+	},
+
 	"activationEvents": [
 		"onCommand:vsConnectClient.start",
 		"onWebviewPanel:vsConnectClient"
