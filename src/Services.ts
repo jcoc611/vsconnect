@@ -46,9 +46,9 @@ export class Services extends EventEmitter {
 			case ServiceActionTypes.VisualizeResponse:
 				// Response transaction is converted into Visualization and sent to UI
 				this.trigger('message', {
-					action: ServiceActionTypes.AppendResponse,
+					type: ServiceActionTypes.AppendResponse,
 					params: [ this.getVisualization('incoming', ...action.params) ]
-				});
+				} as ServiceAction);
 				break;
 		}
 	}
@@ -161,7 +161,7 @@ export class Services extends EventEmitter {
 				ui,
 				value: handler.getValueFromTransaction( transaction )
 			};
-			if (ui.location === 'extra' && groupItems[ui.name]) {
+			if (ui.location === 'extra' && groupItems[ui.name] !== undefined) {
 				if (items[groupItems[ui.name]].ui.type == UITypes.OneOfMany) {
 					if (items[groupItems[ui.name]].ui.count === undefined)
 						items[groupItems[ui.name]].ui.count = ui.count;

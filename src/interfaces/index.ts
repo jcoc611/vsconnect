@@ -7,10 +7,13 @@ export enum UITypes {
 	Enum,
 	String,
 	Host,
-	Bytes,
+	BytesBinary,
+	BytesString,
+	Textarea,
 	Table,
 	Boolean,
 	Object,
+	HTML,
 
 	// Collections
 	OneOfMany,
@@ -36,9 +39,11 @@ export enum IComponentTypes {
 	String,
 	Host,
 	Bytes,
+	Textarea,
 	Table,
 	Boolean,
 	Object,
+	HTML,
 }
 
 export var DefaultComponentUI: { [key in IComponentTypes]: UITypes } = {
@@ -46,10 +51,12 @@ export var DefaultComponentUI: { [key in IComponentTypes]: UITypes } = {
 	[IComponentTypes.Enum]: UITypes.Enum,
 	[IComponentTypes.String]: UITypes.String,
 	[IComponentTypes.Host]: UITypes.Host,
-	[IComponentTypes.Bytes]: UITypes.Bytes,
+	[IComponentTypes.Bytes]: UITypes.BytesString,
+	[IComponentTypes.Textarea]: UITypes.Textarea,
 	[IComponentTypes.Table]: UITypes.Table,
 	[IComponentTypes.Boolean]: UITypes.Boolean,
 	[IComponentTypes.Object]: UITypes.Object,
+	[IComponentTypes.HTML]: UITypes.HTML,
 }
 
 export interface IComponent {
@@ -99,6 +106,23 @@ export interface IVisualization {
 
 export type KeyValues<T> = [T, T][];
 
+interface BytesEmptyValue {
+	type: 'empty';
+}
+
+interface BytesStringValue {
+	type: 'string';
+	rawValue: string;
+}
+
+interface BytesFileValue {
+	type: 'file';
+	name: string;
+	path: string;
+	sizeBytes: number;
+}
+
+export type BytesValue = BytesStringValue | BytesFileValue | BytesEmptyValue;
 
 export enum ServiceActionTypes {
 	GetAllProtocols,

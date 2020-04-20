@@ -2,7 +2,7 @@
 
 *Status: Alpha (usable)*
 
-![Screenshot Preview of v0.2.1](./docs/assets/screenshot-client-v0.2.1.png)
+![Screenshot Preview of v0.2.3](docs/assets/screenshot-client-v0.2.3.png)
 
 VSConnect `("OSS - Connect")` is the ultimate network client for VS Code. It provides an interface
 similar to a command line where you can submit network requests and receive network responses. It

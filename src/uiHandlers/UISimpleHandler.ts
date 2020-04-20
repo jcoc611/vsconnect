@@ -1,6 +1,7 @@
-import { UITypes, ITransaction, IUserInterface, IContext } from "../interfaces";
+import { UITypes, ITransaction, IUserInterface, IContext, BytesValue } from "../interfaces";
 import { UserInterfaceHandler } from "../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent } from "../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, getBinaryComponentSize } from "../utils/transactionTools";
+import { Formats } from "../utils/Formats";
 
 export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 	protected protocolId: string;
@@ -19,19 +20,17 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 		if (Array.isArray(currentValue))
 			ui.count = `${currentValue.length}`;
 
-		if (typeof(currentValue) === 'string' && ui.type == UITypes.Bytes) {
-			let valLength = Buffer.byteLength(currentValue, 'utf8');
-
-			if (valLength < (1 << 10))
-				ui.count = `${valLength} B`;
-			else if (valLength < (1 << 20))
-				ui.count = `${(valLength / (1 << 10)).toFixed(2)} KB`;
-			else if (valLength < (1 << 30))
-				ui.count = `${(valLength / (1 << 20)).toFixed(2)} MB`;
-			else if (valLength < (1 << 40))
-				ui.count = `${(valLength / (1 << 30)).toFixed(2)} GB`;
-			else
-				ui.count = `${(valLength / (1 << 40)).toFixed(2)} TB`;
+		if (ui.type === UITypes.BytesString || ui.type === UITypes.BytesBinary) {
+			let bytesVal: BytesValue = currentValue as any;
+			if (
+				(bytesVal.type === 'file' && ui.type === UITypes.BytesBinary) ||
+				(bytesVal.type === 'string' && ui.type === UITypes.BytesString)
+			) {
+				let byteCount = getBinaryComponentSize(transaction, ui.name);
+				if (byteCount > 0) {
+					ui.count = Formats.byteCountToString(byteCount);
+				}
+			}
 		}
 
 		return ui;

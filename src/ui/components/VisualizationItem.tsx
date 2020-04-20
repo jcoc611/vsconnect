@@ -8,6 +8,8 @@ import { Dropdown } from './visualizationItems/Dropdown';
 import { Textarea } from './visualizationItems/Textarea';
 import { BooleanInput } from './visualizationItems/BooleanInput';
 import { TableEdit } from './visualizationItems/TableEdit';
+import { HTML } from './visualizationItems/HTML';
+import { BytesBinaryInput, BytesStringInput } from './visualizationItems/BytesInput';
 
 interface VisualizationItemProps {
 	onChange?: (viz: IVisualizationItem) => void;
@@ -68,7 +70,15 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 				ElementType = Dropdown;
 				break;
 
-			case UITypes.Bytes:
+			case UITypes.BytesBinary:
+				ElementType = BytesBinaryInput;
+				break;
+
+			case UITypes.BytesString:
+				ElementType = BytesStringInput;
+				break;
+
+			case UITypes.Textarea:
 				ElementType = Textarea;
 				break;
 
@@ -78,6 +88,10 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.Boolean:
 				ElementType = BooleanInput;
+				break;
+
+			case UITypes.HTML:
+				ElementType = HTML;
 				break;
 
 			case UITypes.OneOfMany:

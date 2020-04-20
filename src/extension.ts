@@ -15,7 +15,6 @@ export function activate(context: vscode.ExtensionContext) {
 		// Make sure we register a serializer in activation event
 		vscode.window.registerWebviewPanelSerializer(VSConnectPanel.viewType, {
 			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
-				console.log(`Got state: ${state}`);
 				VSConnectPanel.revive(webviewPanel, context.extensionPath);
 			}
 		});

@@ -255,7 +255,6 @@ export class StateManager {
 		this.currentRequest = Object.assign(
 			{}, this.history[this.reqInHistory.get(reqIndex)!]
 		);
-		console.log(reqIndex, this.reqInHistory.get(reqIndex), this.currentRequest);
 		this.triggerChange();
 	}
 }

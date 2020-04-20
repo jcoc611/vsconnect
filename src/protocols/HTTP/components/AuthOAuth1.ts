@@ -2,7 +2,7 @@
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, getBinaryComponentValue, getBinaryComponentString } from "../../../utils/transactionTools";
 import { OAuth1, OAuth1Request, OAuth1Token } from "../utils/OAuth1";
 
 export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
@@ -68,7 +68,7 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 		let reqData: OAuth1Request = {
 			method: getComponent(currentTransaction, 'verb'),
 			uri,
-			body: getComponent(currentTransaction, 'body'),
+			body: getBinaryComponentString(currentTransaction, 'body'),
 		};
 		let authStr: string = oauth.getAuthHeader(reqData, tokens);
 
