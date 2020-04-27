@@ -20,41 +20,36 @@ export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
 		return [];
 	}
 
-	getUI(transaction: ITransaction): IUserInterface {
+	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.KeyValues,
 			name: this.uiName,
 			subName: this.uiSubName,
 			location: 'extra',
-			count: String(this.getValueFromTransaction(transaction).length)
+			count: String(this.getValueFromTransaction(t, context).length)
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return context === 'outgoing' && hasComponent(transaction, this.componentName);
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return context === 'outgoing' && hasComponent(t, this.componentName);
 	}
 
-	getTransactionFromValue(
-		newValue: KeyValues<string>,
-		currentTransaction: ITransaction
-	): ITransaction {
-		let currentStr = getComponent<string>(currentTransaction, this.componentName);
+	getTransactionFromValue(valueNew: KeyValues<string>, tCurrent: ITransaction): ITransaction {
+		let currentStr = getComponent<string>(tCurrent, this.componentName);
 		let newStr: string;
 		if (this.isURI) {
 			let queryIndex = currentStr.indexOf('?');
 			let rootPath = (queryIndex >= 0) ? currentStr.substr(0, queryIndex) : currentStr;
-			newStr = rootPath + '?' + this.serializeQuery(newValue);
+			newStr = rootPath + '?' + this.serializeQuery(valueNew);
 		} else {
-			newStr = this.serializeQuery(newValue);
+			newStr = this.serializeQuery(valueNew);
 		}
 
-		return setComponent(currentTransaction, this.componentName, newStr);
+		return setComponent(tCurrent, this.componentName, newStr);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): KeyValues<string> {
-		return this.parseQuery( getComponent(newTransaction, this.componentName) );
+	getValueFromTransaction(tNew: ITransaction, context: IContext): KeyValues<string> {
+		return this.parseQuery( getComponent(tNew, this.componentName) );
 	}
 
 	private parseQuery(endpoint: string): KeyValues<string> {

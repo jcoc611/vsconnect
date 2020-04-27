@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { IVisualization, IVisualizationItem, ITransaction, ITransactionState } from '../../interfaces';
+import { IVisualization, IVisualizationItem, ITransaction, ITransactionState, UITypes, OpenTextDocumentOptions } from '../../interfaces';
 import { VisualizationItem } from './VisualizationItem';
 import { Dropdown } from './visualizationItems/Dropdown';
 import classNames = require('classnames');
@@ -8,6 +8,7 @@ interface TransactionProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
 	updateUI: (viz: IVisualizationItem, currentTransaction: ITransaction) => void;
+	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem) => void;
 
 	allProtocols: string[];
 
@@ -77,7 +78,8 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			readOnly,
 			allProtocols,
 			sendCurrentRequest,
-			setProtocol
+			setProtocol,
+			openTextDocument
 		} = this.props;
 
 		if (visualization.context === 'outgoing') {
@@ -91,16 +93,21 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		for (let item of visualization.items) {
 			let itemElement = <VisualizationItem
 				key={item.ui.name}
-				item={item} readOnly={readOnly} onChange={this.handleUIChange} />;
+				item={item} readOnly={readOnly} onChange={this.handleUIChange}
+				openTextDocument={openTextDocument} />;
 
 			if (item.ui.location === 'short') {
 				if (visualization.context === 'incoming') {
-					short.push(
-						<span className='shortItem'>
-							<span className='shortItem-name'>{item.ui.name}</span>
-							{itemElement}
-						</span>
-					);
+					if (item.ui.type === UITypes.Boolean) {
+						short.push(<span className='shortItem'>{itemElement}</span>);
+					} else {
+						short.push(
+							<span className='shortItem'>
+								<span className='shortItem-name'>{item.ui.name}</span>
+								{itemElement}
+							</span>
+						);
+					}
 				} else {
 					short.push(itemElement);
 				}

@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as classNames from 'classnames';
 import { IVisualizationItem } from '../../../interfaces';
 import { AbstractItem, AbstractItemProps } from './AbstractItem';
+import ReactDOM = require('react-dom');
 
 // interface DropdownProps {
 // 	onChange?: (newValue: string) => void;
@@ -113,13 +114,13 @@ export class Dropdown extends AbstractItem<string, DropdownState> {
 		} );
 	}
 
-	handleDocumentClick() {
-		if (this.mounted) {
-			// if (!ReactDOM.findDOMNode(this).contains(event.target)) {
-			// if (this.state.isOpen) {
-			// 	this.setState({ isOpen: false })
-			// }
-			// }
+	handleDocumentClick = (event: MouseEvent | TouchEvent) => {
+		if (this.mounted && event.target !== null) {
+			if (!ReactDOM.findDOMNode(this)!.contains(event.target as Node)) {
+				if (this.state.isOpen) {
+					this.setState({ isOpen: false, value: this.state.value });
+				}
+			}
 		}
 	}
 

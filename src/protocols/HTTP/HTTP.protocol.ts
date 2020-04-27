@@ -18,6 +18,7 @@ import { getHeaderValue, objToHeaderValues, hasHeaderValue } from "./utils/Heade
 import { Formats } from "../../utils/Formats";
 import { BodyBinaryComponent } from "./components/BodyBinary";
 import { BodyUrlencodedComponent } from "./components/BodyUrlencoded";
+import { CookiesComponent } from "./components/Cookies";
 
 interface TLSComponentValue {
 	enabled: boolean;
@@ -57,6 +58,7 @@ export class HTTP extends ProtocolHandler {
 		return {
 			protocolId: 'HTTP',
 			components: {
+				host: response.request.host,
 				// TODO: this should be type 'file' if non text?
 				body: {
 					type: 'string',
@@ -168,6 +170,7 @@ export class HTTP extends ProtocolHandler {
 				},
 				new URLComponent(),
 				new TLSComponent(),
+				new CookiesComponent(),
 				new AuthBasicComponent(),
 				new AuthOAuth1Component(),
 			]
@@ -195,6 +198,7 @@ export class HTTP extends ProtocolHandler {
 			simple: false,
 			encoding: null,
 			time: true,
+			followRedirect: false,
 
 			method: getComponent(transaction, 'verb'),
 			headers: headersObj,

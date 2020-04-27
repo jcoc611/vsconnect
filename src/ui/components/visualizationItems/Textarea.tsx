@@ -9,6 +9,6 @@ export class Textarea extends AbstractItem<string> {
 			onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value);
 		}
 
-		return <textarea onChange={onInputChange} value={value} readOnly={readOnly} />;
+		return <textarea onChange={onInputChange} onContextMenu={this.openContextMenu} value={value} readOnly={readOnly} />;
 	}
 }

@@ -15,13 +15,15 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 
 		for (let i = 0; i < value.length; i++) {
 			if (index === i) {
-				newTuples.push([ newKey, value[i][1] ]);
+				if (newKey !== '' || value[i][1] !== '') {
+					newTuples.push([ newKey, value[i][1] ]);
+				}
 			} else {
 				newTuples.push(value[i]);
 			}
 		}
 
-		if (index === value.length) {
+		if (index === value.length && newKey !== '') {
 			newTuples.push([ newKey, '' ]);
 		}
 
@@ -34,13 +36,15 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 
 		for (let i = 0; i < value.length; i++) {
 			if (index === i) {
-				newTuples.push([ value[i][0], newValue ]);
+				if (value[i][0] !== '' || newValue !== '') {
+					newTuples.push([ value[i][0], newValue ]);
+				}
 			} else {
 				newTuples.push(value[i]);
 			}
 		}
 
-		if (index === value.length) {
+		if (index === value.length && newValue !== '') {
 			newTuples.push([ '', newValue ]);
 		}
 
@@ -53,9 +57,11 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 		return <tr>
 			<td><input type="text" placeholder="Name" value={key} readOnly={this.props.readOnly}
 				style={({ width: keyWidth })}
+				onContextMenu={this.openContextMenu}
 				onChange={(e) => this.updateKey(index, e.target.value)} /></td>
 			<td><input type="text" placeholder="Value" value={value} readOnly={this.props.readOnly}
 				style={({ width: valueWidth })}
+				onContextMenu={this.openContextMenu}
 				onChange={(e) => this.updateValue(index, e.target.value)} /></td>
 		</tr>;
 	}

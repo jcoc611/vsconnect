@@ -2,7 +2,7 @@
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, deleteKeyValueComponent, setKeyValueComponent } from "../../../utils/transactionTools";
 
 export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
 
@@ -10,8 +10,8 @@ export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
 		return [ '', '' ];
 	}
 
-	getUI(transaction: ITransaction): IUserInterface {
-		let value: string[] = this.getValueFromTransaction(transaction);
+	getUI(t: ITransaction, context: IContext): IUserInterface {
+		let value: string[] = this.getValueFromTransaction(t, context);
 		return {
 			type: UITypes.Form,
 			name: 'auth',
@@ -33,35 +33,21 @@ export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return context === 'outgoing' && hasComponent(transaction, 'headers');
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return context === 'outgoing' && hasComponent(t, 'headers');
 	}
 
-	getTransactionFromValue(
-		newValue: string[],
-		currentTransaction: ITransaction
-	): ITransaction {
-		if (newValue.length < 2 || (newValue[0] === '' && newValue[1] === ''))
-			return currentTransaction;
+	getTransactionFromValue(valueNew: string[], tCurrent: ITransaction): ITransaction {
+		if (valueNew.length < 2 || (valueNew[0] === '' && valueNew[1] === '')) {
+			return deleteKeyValueComponent(tCurrent, 'headers', 'authorization');
+		}
 
-		let currentHeaders = getComponent<KeyValues<string>>(currentTransaction, 'headers');
-		let newHeaders = [...currentHeaders];
-
-		let iAuth = newHeaders.findIndex((h) => h[0].toLowerCase() === 'authorization');
-		let basicAuthStr = 'Basic ' + Buffer.from(`${newValue[0]}:${newValue[1]}`).toString('base64');
-
-		if (iAuth >= 0)
-			newHeaders[iAuth][1] = basicAuthStr;
-		else
-			newHeaders.push([ 'authorization', basicAuthStr ]);
-
-		return setComponent(currentTransaction, 'headers', newHeaders);
+		let basicAuthStr = 'Basic ' + Buffer.from(`${valueNew[0]}:${valueNew[1]}`).toString('base64');
+		return setKeyValueComponent(tCurrent, 'headers', 'authorization', basicAuthStr);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): string[] {
-		return this.fromHeaders( getComponent<KeyValues<string>>(newTransaction, 'headers') );
+	getValueFromTransaction(tNew: ITransaction, context: IContext): string[] {
+		return this.fromHeaders( getComponent<KeyValues<string>>(tNew, 'headers') );
 	}
 
 	private fromHeaders(headers: KeyValues<string>): string[] {

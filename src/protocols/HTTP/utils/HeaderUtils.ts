@@ -30,8 +30,13 @@ export function objToHeaderValues(
 ) : HeaderValues {
 	let headerKV: KeyValues<string> = [];
 	for (let key of Object.keys(resHeaders).sort()) {
-		if (typeof (resHeaders[key]) === 'string') {
-			headerKV.push([ key, resHeaders[key] as string ]);
+		let val = resHeaders[key];
+		if (typeof (val) === 'string') {
+			headerKV.push([ key, val as string ]);
+		} else if (Array.isArray(val)) {
+			for (let item of val) {
+				headerKV.push([ key, item ]);
+			}
 		}
 	}
 	return headerKV;

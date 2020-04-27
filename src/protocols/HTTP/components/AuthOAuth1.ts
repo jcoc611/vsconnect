@@ -11,8 +11,8 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 		return [ '', '' ];
 	}
 
-	getUI(transaction: ITransaction): IUserInterface {
-		let value: string[] = this.getValueFromTransaction(transaction);
+	getUI(t: ITransaction, context: IContext): IUserInterface {
+		let value: string[] = this.getValueFromTransaction(t, context);
 		return {
 			type: UITypes.Form,
 			name: 'auth',
@@ -44,35 +44,32 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return context === 'outgoing' && hasComponent(transaction, 'headers');
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return context === 'outgoing' && hasComponent(t, 'headers');
 	}
 
-	getTransactionFromValue(
-		newValue: string[],
-		currentTransaction: ITransaction
-	): ITransaction {
-		if (newValue.length < 4 || (newValue[0] === '' && newValue[1] === ''))
-			return currentTransaction;
+	getTransactionFromValue(valueNew: string[], tCurrent: ITransaction): ITransaction {
+		if (valueNew.length < 4 || (valueNew[0] === '' && valueNew[1] === ''))
+			return tCurrent;
 
-		let newTransaction = setComponent(currentTransaction, 'oauth-1.0', newValue);
+		let newTransaction = setComponent(tCurrent, 'oauth-1.0', valueNew);
 
-		let consumer = { key: newValue[0], secret: newValue[1] };
+		let consumer = { key: valueNew[0], secret: valueNew[1] };
 		let tokens: OAuth1Token | undefined = undefined;
-		if (newValue[2] && newValue[3])
-			tokens = { key: newValue[2], secret: newValue[3] };
+		if (valueNew[2] && valueNew[3])
+			tokens = { key: valueNew[2], secret: valueNew[3] };
 		const oauth = new OAuth1({ consumer, signatureMethod: 'HMAC-SHA1', realm: '' });
 
-		let host: string = getComponent<string>(currentTransaction, 'host');
-		let uri: string =  host + getComponent<string>(currentTransaction, 'path');
+		let host: string = getComponent<string>(tCurrent, 'host');
+		let uri: string =  host + getComponent<string>(tCurrent, 'path');
 		let reqData: OAuth1Request = {
-			method: getComponent(currentTransaction, 'verb'),
+			method: getComponent(tCurrent, 'verb'),
 			uri,
-			body: getBinaryComponentString(currentTransaction, 'body'),
+			body: getBinaryComponentString(tCurrent, 'body'),
 		};
 		let authStr: string = oauth.getAuthHeader(reqData, tokens);
 
-		let currentHeaders = getComponent<KeyValues<string>>(currentTransaction, 'headers', []);
+		let currentHeaders = getComponent<KeyValues<string>>(tCurrent, 'headers', []);
 		let newHeaders = [...currentHeaders];
 		let iAuth = newHeaders.findIndex((h) => h[0].toLowerCase() === 'authorization');
 		if (iAuth >= 0)
@@ -83,16 +80,14 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 		return setComponent(newTransaction, 'headers', newHeaders);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): string[] {
-		if (hasComponent(newTransaction, 'oauth-1.0'))
-			return getComponent<string[]>(newTransaction, 'oauth-1.0');
+	getValueFromTransaction(tNew: ITransaction, context: IContext): string[] {
+		if (hasComponent(tNew, 'oauth-1.0'))
+			return getComponent<string[]>(tNew, 'oauth-1.0');
 
 		return ['', '', '', ''];
 	}
 
-	shouldRecompute(oldTransaction: ITransaction, newTransaction: ITransaction): boolean {
-		return hasComponent(newTransaction, 'oauth-1.0');
+	shouldRecompute(tOld: ITransaction, tNew: ITransaction): boolean {
+		return hasComponent(tNew, 'oauth-1.0');
 	}
 }

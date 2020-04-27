@@ -7,7 +7,7 @@ interface TLSComponentValue {
 }
 
 export class TLSComponent extends UserInterfaceHandler<boolean> {
-	getUI(transaction: ITransaction): IUserInterface {
+	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.Boolean,
 			name: 'TLS',
@@ -15,31 +15,26 @@ export class TLSComponent extends UserInterfaceHandler<boolean> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return hasComponent(transaction, 'tls');
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return hasComponent(t, 'tls');
 	}
 
-	getTransactionFromValue(
-		newValue: boolean,
-		currentTransaction: ITransaction
-	): ITransaction {
-		let newTransaction: ITransaction = currentTransaction;
+	getTransactionFromValue(valueNew: boolean, tCurrent: ITransaction): ITransaction {
+		let tNew: ITransaction = tCurrent;
 
-		let host: string = getComponent<string>(currentTransaction, 'host');
+		let host: string = getComponent<string>(tCurrent, 'host');
 		let parts = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(host)!;
 		host = (typeof(parts[1]) === 'string')? host.substr(parts[1].length) : host;
-		if (newValue && parts[1] !== 'https://')
-			newTransaction = setComponent(newTransaction, 'host', 'https://' + host);
-		else if (!newValue && parts[1] !== 'http://')
-			newTransaction = setComponent(newTransaction, 'host', 'http://' + host);
+		if (valueNew && parts[1] !== 'https://')
+			tNew = setComponent(tNew, 'host', 'https://' + host);
+		else if (!valueNew && parts[1] !== 'http://')
+			tNew = setComponent(tNew, 'host', 'http://' + host);
 
-		newTransaction = setComponent(newTransaction, 'tls', { enabled: newValue });
-		return newTransaction;
+		tNew = setComponent(tNew, 'tls', { enabled: valueNew });
+		return tNew;
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): boolean {
-		return getComponent<TLSComponentValue>(newTransaction, 'tls').enabled;
+	getValueFromTransaction(tNew: ITransaction, context: IContext): boolean {
+		return getComponent<TLSComponentValue>(tNew, 'tls').enabled;
 	}
 }

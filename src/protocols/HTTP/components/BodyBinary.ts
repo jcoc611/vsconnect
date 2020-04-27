@@ -7,8 +7,8 @@ import { getHeaderValue } from "../utils/HeaderUtils";
 import { Formats } from "../../../utils/Formats";
 
 export class BodyBinaryComponent extends UserInterfaceHandler<BytesValue> {
-	getUI(transaction: ITransaction): IUserInterface {
-		let valueCur = this.getValueFromTransaction(transaction);
+	getUI(t: ITransaction, context: IContext): IUserInterface {
+		let valueCur = this.getValueFromTransaction(t, context);
 		return {
 			type: UITypes.BytesBinary,
 			name: 'body',
@@ -18,20 +18,15 @@ export class BodyBinaryComponent extends UserInterfaceHandler<BytesValue> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return (context === 'outgoing' && hasComponent(transaction, 'body'));
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return (context === 'outgoing' && hasComponent(t, 'body'));
 	}
 
-	getTransactionFromValue(
-		newValue: BytesValue,
-		currentTransaction: ITransaction
-	): ITransaction {
-		return setComponent(currentTransaction, 'body', newValue);
+	getTransactionFromValue(valueNew: BytesValue, tCurrent: ITransaction): ITransaction {
+		return setComponent(tCurrent, 'body', valueNew);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): BytesValue {
-		return getComponent<BytesValue>(newTransaction, 'body', { type: 'empty' });
+	getValueFromTransaction(tNew: ITransaction, context: IContext): BytesValue {
+		return getComponent<BytesValue>(tNew, 'body', { type: 'empty' });
 	}
 }

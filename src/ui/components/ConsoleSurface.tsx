@@ -1,12 +1,13 @@
 import * as React from 'react';
 
-import { IVisualization, IVisualizationItem, ITransaction } from '../../interfaces';
+import { IVisualization, IVisualizationItem, ITransaction, OpenTextDocumentOptions } from '../../interfaces';
 import { Transaction } from './Transaction';
 
 interface ConsoleSurfaceProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
 	updateUI: (viz: IVisualizationItem, currentTransaction: ITransaction) => void;
+	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem) => void;
 
 	currentRequest: IVisualization;
 	history: IVisualization[];
@@ -36,7 +37,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 		// const history = this.props.history;
 		const {
 			history, currentRequest, allProtocols,
-			sendCurrentRequest, setProtocol, updateUI
+			sendCurrentRequest, setProtocol, updateUI, openTextDocument
 		} = this.props;
 
 		let reqCount = 0;
@@ -50,6 +51,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 				index = ++resCount;
 			}
 
+			// TODO: Some of the method props not needed in this case, remove
 			return <Transaction
 				index={index}
 				key={reqCount + resCount}
@@ -59,7 +61,8 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 
 				updateUI={updateUI}
 				setProtocol={setProtocol}
-				sendCurrentRequest={sendCurrentRequest} />;
+				sendCurrentRequest={sendCurrentRequest}
+				openTextDocument={openTextDocument} />;
 		} );
 
 		content.push(
@@ -72,9 +75,13 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps, {}> {
 
 				updateUI={updateUI}
 				setProtocol={setProtocol}
-				sendCurrentRequest={sendCurrentRequest} />
+				sendCurrentRequest={sendCurrentRequest}
+				openTextDocument={openTextDocument} />
 		);
 
-		return <div id="content">{content}</div>;
+		return <div id="content">
+			<div style={({'marginTop':'15px'})}>🧪 Thanks for trying out the <i>alpha</i> version of VSConnect! All feedback is welcome on <a target="_blank" href="https://github.com/jcoc611/vsconnect/issues">Github</a>.</div>
+			{content}
+		</div>;
 	}
 }

@@ -1,6 +1,7 @@
 // import { WebViewServices } from "./utils/WebViewServices";
-import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem } from "../interfaces";
+import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes } from "../interfaces";
 import { DelegatedPromise } from "../utils/DelegatedPromise";
+import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
 
 // type History = IVisualization[];
 
@@ -30,6 +31,11 @@ export class StateManager {
 	private pendingPromiseCount: number = 0;
 	private historyWalkCurrent: number = -1;
 
+	private trackedTextDocuments: { [key: number]: IVisualizationItem } = {};
+
+	private contextMenuContent?: ContextMenuContent;
+	private contextMenuLocation?: { top: number, left: number };
+
 	private constructor() {
 		// @ts-ignore because function does not exist in dev environment
 		// eslint-disable-next-line
@@ -46,6 +52,14 @@ export class StateManager {
 			} else if (message.type === 'call') {
 				if (message.action.type === ServiceActionTypes.AppendResponse) {
 					this.addResponse(message.action.params[0]);
+				} else if (message.action.type === ServiceActionTypes.TextDocumentChanged) {
+					const [ trackedDocId, contentNew ] = message.action.params;
+					let viz: IVisualizationItem = this.trackedTextDocuments[trackedDocId];
+					viz.value = contentNew;
+					this.updateUI(viz, this.currentRequest!.transaction, true);
+				} else if (message.action.type === ServiceActionTypes.TextDocumentClosed) {
+					const [ trackedDocId ] = message.action.params;
+					delete this.trackedTextDocuments[trackedDocId];
 				} else {
 					throw new Error(`UI received action call of unexpected type ${message.action.type}`);
 				}
@@ -53,6 +67,18 @@ export class StateManager {
 				throw new Error(`Received message of unknown type`);
 			}
 		} );
+
+		// @ts-ignore custom event support not there yet
+		window.addEventListener('vsconnect:contextmenu', (event: ContextMenuEvent) => {
+			this.contextMenuLocation = {
+				top: event.detail.pageY,
+				left: event.detail.pageX
+			}
+			this.contextMenuContent = event.detail.content;
+			this.triggerChange();
+		});
+
+		window.addEventListener('vsconnect:contextmenu:close', () => this.closeContextMenu());
 
 		document.addEventListener('keydown', (event) => {
 			if (event.key === 'ArrowUp' && this.historyWalkCurrent + 1 < this.reqCount) {
@@ -63,6 +89,8 @@ export class StateManager {
 				event.preventDefault();
 				this.historyWalkCurrent--;
 				this.duplicateFromHistory();
+			} else if (event.key === 'Escape') {
+				this.closeContextMenu();
 			}
 		});
 
@@ -72,14 +100,16 @@ export class StateManager {
 
 	toJSON() {
 		const {
-			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount, lastProtocol
+			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount, lastProtocol,
+			trackedTextDocuments
 		} = this;
 
 		return encodeURI(JSON.stringify({
 			history, currentRequest,
 			reqInHistory: Array.from(reqInHistory.entries()),
 			resInHistory: Array.from(resInHistory.entries()),
-			reqCount, resCount, lastProtocol
+			reqCount, resCount, lastProtocol,
+			trackedTextDocuments
 		}));
 	}
 
@@ -113,6 +143,7 @@ export class StateManager {
 		const currentRequest: IVisualization = this.getCurrentRequest();
 
 		this.lastProtocol = currentRequest.transaction.protocolId;
+		this.historyWalkCurrent = -1;
 		this.addRequest(currentRequest);
 		this.currentRequest = undefined;
 		await this.addNewRequest();
@@ -131,7 +162,7 @@ export class StateManager {
 		this.triggerChange();
 	}
 
-	async updateUI(viz: IVisualizationItem, currentTransaction: ITransaction) {
+	async updateUI(viz: IVisualizationItem, currentTransaction: ITransaction, fromTextDocument: boolean = false) {
 		if ( this.currentRequest === undefined ) {
 			throw new Error('Cannot update UI if there is no current request');
 		}
@@ -141,6 +172,45 @@ export class StateManager {
 			params: [viz, currentTransaction]
 		});
 		this.triggerChange();
+
+		if (viz.ui.type === UITypes.BytesString && !fromTextDocument) {
+			let docId = this.isTrackingDoc(viz);
+			if (docId >= 0) {
+				this.remoteCall({
+					type: ServiceActionTypes.TextDocumentChanged,
+					params: [docId, viz.value]
+				} as ServiceAction);
+			}
+		}
+	}
+
+	async openTextDocument(textDoc: OpenTextDocumentOptions, viz: IVisualizationItem) {
+		let textDocId: number = await this.remoteCall({
+			type: ServiceActionTypes.OpenTextDocument,
+			params: [textDoc]
+		});
+		this.trackedTextDocuments[textDocId] = viz;
+	}
+
+	// context menus
+	hasContextMenu() : boolean {
+		return (this.contextMenuContent !== undefined && this.contextMenuContent.items.length > 0);
+	}
+
+	getContextMenuContent(): ContextMenuContent | undefined {
+		return this.contextMenuContent;
+	}
+
+	getContextMenuLocation(): { top: number, left: number } {
+		return this.contextMenuLocation!;
+	}
+
+	closeContextMenu(): void {
+		if (this.hasContextMenu()) {
+			this.contextMenuContent = undefined;
+			this.contextMenuLocation = undefined;
+			this.triggerChange();
+		}
 	}
 
 	private async addNewRequest(): Promise<void> {
@@ -227,6 +297,16 @@ export class StateManager {
 		}
 	}
 
+	private isTrackingDoc(viz: IVisualizationItem): number {
+		for (let docId of Object.keys(this.trackedTextDocuments)) {
+			let vizTracked = this.trackedTextDocuments[Number(docId)];
+			if (vizTracked.handlerId == viz.handlerId && vizTracked.ui.name === viz.ui.name)
+				return Number(docId);
+		}
+
+		return -1;
+	}
+
 	private attemptRestore(): boolean {
 		let prevState = this.vscode.getState();
 		if (prevState) {
@@ -238,6 +318,7 @@ export class StateManager {
 			this.reqCount = prevState.reqCount;
 			this.resCount = prevState.resCount;
 			this.lastProtocol = prevState.lastProtocol;
+			this.trackedTextDocuments = prevState.trackedTextDocuments;
 
 			this.triggerChange();
 			return true;

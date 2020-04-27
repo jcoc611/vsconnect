@@ -17,14 +17,14 @@ export enum RecordType {
 	TXT   = 16,  //  16 text strings
 }
 
-enum QuestionExraType {
+export enum QuestionExtraType {
 	AXFR  = 252, // 252 A request for a transfer of an entire zone
 	MAILB = 253, // 253 A request for mailbox-related records (MB, MG or MR)
 	MAILA = 254, // 254 A request for mail agent RRs (Obsolete - see MX)
 	ALL   = 255, // 255 A request for all records
 }
 
-export type QuestionType = RecordType | QuestionExraType;
+export type QuestionType = RecordType | QuestionExtraType;
 
 export enum RecordClass {
 	IN    = 1,   //  1 the Internet

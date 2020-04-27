@@ -14,8 +14,8 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 		this.uiSpec = uiSpec;
 	}
 
-	getUI(transaction: ITransaction): IUserInterface {
-		const currentValue: T = this.getValueFromTransaction(transaction);
+	getUI(t: ITransaction, context: IContext): IUserInterface {
+		const currentValue: T = this.getValueFromTransaction(t, context);
 		let ui: IUserInterface = Object.assign({}, this.uiSpec);
 		if (Array.isArray(currentValue))
 			ui.count = `${currentValue.length}`;
@@ -26,7 +26,7 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 				(bytesVal.type === 'file' && ui.type === UITypes.BytesBinary) ||
 				(bytesVal.type === 'string' && ui.type === UITypes.BytesString)
 			) {
-				let byteCount = getBinaryComponentSize(transaction, ui.name);
+				let byteCount = getBinaryComponentSize(t, ui.name);
 				if (byteCount > 0) {
 					ui.count = Formats.byteCountToString(byteCount);
 				}
@@ -36,8 +36,8 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 		return ui;
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		if (transaction.protocolId !== this.protocolId) {
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		if (t.protocolId !== this.protocolId) {
 			return false;
 		}
 
@@ -45,19 +45,14 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 			return false;
 		}
 
-		return hasComponent(transaction, this.uiSpec.name);
+		return hasComponent(t, this.uiSpec.name);
 	}
 
-	getTransactionFromValue(
-		newValue: T,
-		currentTransaction: ITransaction
-	): ITransaction {
-		return setComponent(currentTransaction, this.uiSpec.name, newValue);
+	getTransactionFromValue(valueNew: T, tCurrent: ITransaction): ITransaction {
+		return setComponent(tCurrent, this.uiSpec.name, valueNew);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): T {
-		return getComponent<T>(newTransaction, this.uiSpec.name);
+	getValueFromTransaction(tNew: ITransaction, context: IContext): T {
+		return getComponent<T>(tNew, this.uiSpec.name);
 	}
 }

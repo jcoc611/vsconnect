@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { IVisualizationItem, UITypes } from '../../interfaces';
-import classNames = require('classnames');
+import { IVisualizationItem, UITypes, OpenTextDocumentOptions } from '../../interfaces';
 import { KeyValueEdit } from './visualizationItems/KeyValueEdit';
 import { StringInput } from './visualizationItems/StringInput';
 import { AbstractItem, AbstractItemProps } from './visualizationItems/AbstractItem';
@@ -13,6 +12,7 @@ import { BytesBinaryInput, BytesStringInput } from './visualizationItems/BytesIn
 
 interface VisualizationItemProps {
 	onChange?: (viz: IVisualizationItem) => void;
+	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem) => void;
 
 	item: IVisualizationItem;
 	// index: number;
@@ -51,11 +51,18 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 			this.setState({ transientValue: newValue });
 	}
 
+	doOpenTextDocument = (docOptions: OpenTextDocumentOptions, item?: IVisualizationItem) => {
+		if (this.props.openTextDocument) {
+			this.props.openTextDocument(docOptions, (item)? item : this.props.item);
+		}
+	}
+
 	render() {
-		const { /*index,*/ item, readOnly } = this.props;
+		const { item, readOnly } = this.props;
 		const value = this.state.transientValue;
 
 		let ElementType: { new(props: AbstractItemProps<any>): AbstractItem<any, any> } | undefined;
+		let openTextDocument: (( docOptions: OpenTextDocumentOptions, viz: IVisualizationItem) => void) | undefined;
 
 		switch (item.ui.type) {
 			case UITypes.KeyValues:
@@ -76,6 +83,7 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.BytesString:
 				ElementType = BytesStringInput;
+				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Textarea:
@@ -84,6 +92,7 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.Table:
 				ElementType = TableEdit;
+				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Boolean:
@@ -96,10 +105,12 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.OneOfMany:
 				ElementType = OneOfManyItem;
+				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Form:
 				ElementType = FormItem;
+				openTextDocument = this.props.openTextDocument;
 				break;
 		}
 
@@ -110,6 +121,7 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 		return <ElementType name={item.ui.name} value={value} readOnly={readOnly}
 			onChange={this.handleChange}
+			openTextDocument={this.doOpenTextDocument}
 			components={item.ui.components}
 			allowedValues={item.ui.allowedValues} />;
 	}
@@ -161,7 +173,7 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem[], OneOfManyState, a
 	}
 
 	render() {
-		const { name, value, readOnly } = this.props;
+		const { name, value, readOnly, openTextDocument } = this.props;
 		let options = [];
 		let selectedItem;
 
@@ -181,6 +193,9 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem[], OneOfManyState, a
 					onChange={(item) => {
 						(this.props.onChange)? this.props.onChange(item, true) : null
 					}}
+					openTextDocument={(docOptions, vizChild) => (
+						openTextDocument!(docOptions, (vizChild)? vizChild: item)
+					)}
 					item={item}	readOnly={readOnly} />;
 			}
 		}
@@ -208,7 +223,7 @@ class FormItem extends AbstractItem<any[]> {
 	}
 
 	render() {
-		const { components, readOnly, value } = this.props;
+		const { components, readOnly, value, openTextDocument } = this.props;
 		let childrenItems: JSX.Element[] = [];
 
 		if (!components)
@@ -225,6 +240,9 @@ class FormItem extends AbstractItem<any[]> {
 					<span>{viz.ui.name}</span>
 					<VisualizationItem
 						key={i} onChange={this.handleChange}
+						openTextDocument={(docOptions, vizChild) => (
+							openTextDocument!(docOptions, (vizChild)? vizChild: viz)
+						)}
 						item={viz} readOnly={readOnly} />
 				</div>
 			);

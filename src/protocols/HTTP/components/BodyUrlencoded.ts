@@ -7,8 +7,8 @@ export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<stri
 		return [];
 	}
 
-	getUI(transaction: ITransaction): IUserInterface {
-		let valLength = this.getValueFromTransaction(transaction).length;
+	getUI(t: ITransaction, context: IContext): IUserInterface {
+		let valLength = this.getValueFromTransaction(t, context).length;
 		return {
 			type: UITypes.KeyValues,
 			name: 'body',
@@ -18,29 +18,24 @@ export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<stri
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return context === 'outgoing' && hasComponent(transaction, 'body');
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return context === 'outgoing' && hasComponent(t, 'body');
 	}
 
-	getTransactionFromValue(
-		newValue: KeyValues<string>,
-		currentTransaction: ITransaction
-	): ITransaction {
-		let currentVal = getComponent<BytesValue>(currentTransaction, 'body');
+	getTransactionFromValue(valueNew: KeyValues<string>, tCurrent: ITransaction): ITransaction {
+		let currentVal = getComponent<BytesValue>(tCurrent, 'body');
 		if (currentVal.type !== 'string')
-			return currentTransaction;
+			return tCurrent;
 
-		let newStr: string = this.serializeQuery(newValue);
-		return setComponent(currentTransaction, 'body', {
+		let newStr: string = this.serializeQuery(valueNew);
+		return setComponent(tCurrent, 'body', {
 			type: 'string',
 			rawValue: newStr
 		} as BytesValue);
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): KeyValues<string> {
-		let currentVal = getComponent<BytesValue>(newTransaction, 'body');
+	getValueFromTransaction(tNew: ITransaction, context: IContext): KeyValues<string> {
+		let currentVal = getComponent<BytesValue>(tNew, 'body');
 		if (currentVal.type !== 'string')
 			return [];
 		return this.parseQuery(currentVal.rawValue);

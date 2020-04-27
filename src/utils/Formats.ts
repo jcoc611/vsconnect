@@ -5,6 +5,10 @@ const sToMin = 60;
 const minToHour = 60;
 
 export class Formats {
+	static secondsToString(s: number) {
+		return this.msToString(s * msToS);
+	}
+
 	static msToString(ms: number): string {
 		if (ms < msToS) {
 			return ms.toFixed(2) + ' ms';

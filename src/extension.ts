@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ServiceAction, IServiceCall, IServiceResult } from './interfaces';
+import { ServiceAction, IServiceCall, IServiceResult, OpenTextDocumentOptions } from './interfaces';
 import { Services } from './Services';
 import { registerBuiltins } from './registerBuiltins';
 
@@ -107,6 +107,38 @@ class VSConnectPanel {
 			};
 			this._panel.webview.postMessage(svcCall);
 		});
+		this.services.on('document:open', (docOptions: OpenTextDocumentOptions) =>
+			vscode.workspace.openTextDocument({
+				language: docOptions.language,
+				content: docOptions.content,
+			}).then((textDocument) => {
+				if (docOptions.shouldSync) {
+					this.services.trackTextDocument(textDocument);
+				}
+				vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Beside, true);
+			})
+		);
+		this.services.on('document:change', (textDocument: vscode.TextDocument, valueNew: string) => {
+			for (let editor of vscode.window.visibleTextEditors) {
+				if (editor.document === textDocument) {
+					let firstLine = textDocument.lineAt(0);
+					let lastLine = textDocument.lineAt(textDocument.lineCount - 1);
+					let textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
+					editor.edit((editBuilder) => editBuilder.replace(textRange, valueNew));
+					break;
+				}
+			}
+		});
+		vscode.workspace.onDidChangeTextDocument(
+			(e) => this.services.textDocumentDidChange(e.document),
+			null,
+			this._disposables
+		);
+		vscode.workspace.onDidCloseTextDocument(
+			(docClosed) => this.services.textDocumentDidClose(docClosed),
+			null,
+			this._disposables
+		);
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
@@ -200,6 +232,7 @@ class VSConnectPanel {
 		<body>
 			<header></header>
 			<div id="content-wrapper"></div>
+			<div id="contextmenu-wrapper" style="display:none"></div>
 			<script nonce="${nonce}" src="${scriptUri}"></script>
 		</body>
 		</html>`;

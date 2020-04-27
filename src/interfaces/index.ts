@@ -130,7 +130,10 @@ export enum ServiceActionTypes {
 	HandleVisualizationChange,
 	DoTransaction,
 	VisualizeResponse,
-	AppendResponse
+	AppendResponse,
+	OpenTextDocument,
+	TextDocumentChanged,
+	TextDocumentClosed,
 };
 
 interface GetAllProtocolsAction {
@@ -163,6 +166,29 @@ interface AppendResponseAction {
 	params: [IVisualization]
 }
 
+export interface OpenTextDocumentOptions {
+	name: string;
+	content: string;
+	language: string;
+	shouldSync: boolean;
+}
+
+interface OpenTextDocumentAction {
+	type: ServiceActionTypes.OpenTextDocument,
+	params: [OpenTextDocumentOptions]
+}
+
+/** A text document synced with a BytesStringInput changed [input id, new content] */
+interface TextDocumentChangedAction {
+	type: ServiceActionTypes.TextDocumentChanged,
+	params: [number, BytesValue]
+}
+
+interface TextDocumentClosedAction {
+	type: ServiceActionTypes.TextDocumentClosed,
+	params: [number],
+}
+
 export type ServiceAction = (
 	GetAllProtocolsAction
 	| GetNewRequest
@@ -170,6 +196,9 @@ export type ServiceAction = (
 	| DoTransactionAction
 	| VisualizeResponseAction
 	| AppendResponseAction
+	| OpenTextDocumentAction
+	| TextDocumentChangedAction
+	| TextDocumentClosedAction
 );
 
 export interface IServiceCall {

@@ -39,8 +39,29 @@ export class BytesBinaryInput extends AbstractItem<BytesValue> {
 }
 
 export class BytesStringInput extends AbstractItem<BytesValue> {
+	private openInNewTab = () => {
+		if (this.props.openTextDocument) {
+			this.props.openTextDocument({
+				name: this.props.name,
+				language: '',
+				content: this.valueActual(),
+				shouldSync: !this.props.readOnly
+			});
+		}
+	}
+
+	private valueActual(): string {
+		const { value } = this.props;
+		if (value.type === 'string')
+			return value.rawValue;
+		else if (value.type === 'empty')
+			return '';
+		else
+			return '<Binary data - edit to delete>';
+	}
+
 	render() {
-		const { onChange, value, readOnly } = this.props;
+		const { onChange, value, readOnly, openTextDocument } = this.props;
 		let onInputChange;
 		if (onChange !== undefined) {
 			onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange({
@@ -49,11 +70,11 @@ export class BytesStringInput extends AbstractItem<BytesValue> {
 			});
 		}
 
-		if (value.type === 'string')
-			return <textarea onChange={onInputChange} value={value.rawValue} readOnly={readOnly} />;
-		else if (value.type === 'empty')
-			return <textarea onChange={onInputChange} value={''} readOnly={readOnly} />;
-		else
-			return <textarea onChange={onInputChange} value={'<Binary data - edit to delete>'} readOnly={readOnly} />;
+		let valueActual: string = this.valueActual();
+
+		return <div className="bytesStringInput">
+			<textarea onChange={onInputChange} onContextMenu={this.openContextMenu} value={valueActual} readOnly={readOnly} />
+			<div className="bytes-bottomBar"><button onClick={this.openInNewTab}>open in new tab</button></div>
+		</div>;
 	}
 }

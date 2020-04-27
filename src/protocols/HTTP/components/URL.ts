@@ -3,7 +3,7 @@ import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
 import { hasComponent, getComponent, setComponent, setComponents } from "../../../utils/transactionTools";
 
 export class URLComponent extends UserInterfaceHandler<string> {
-	getUI(transaction: ITransaction): IUserInterface {
+	getUI(transaction: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.String,
 			name: 'URL',
@@ -11,16 +11,13 @@ export class URLComponent extends UserInterfaceHandler<string> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		return hasComponent(transaction, 'path') && hasComponent(transaction, 'host');
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		return hasComponent(t, 'path') && hasComponent(t, 'host');
 	}
 
-	getTransactionFromValue(
-		newValue: string,
-		currentTransaction: ITransaction
-	): ITransaction {
-		let result = currentTransaction;
-		let parts = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(newValue);
+	getTransactionFromValue(valueNew: string, tCurrent: ITransaction): ITransaction {
+		let result = tCurrent;
+		let parts = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(valueNew);
 		if (!parts || parts.length !== 4) {
 			throw new Error('URL has wrong format');
 		}
@@ -41,10 +38,7 @@ export class URLComponent extends UserInterfaceHandler<string> {
 		return result;
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): string {
-		return getComponent<string>(newTransaction, 'host')
-			+ getComponent<string>(newTransaction, 'path');
+	getValueFromTransaction(tNew: ITransaction, context: IContext): string {
+		return getComponent<string>(tNew, 'host') + getComponent<string>(tNew, 'path');
 	}
 }

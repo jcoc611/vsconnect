@@ -3,6 +3,10 @@ import { ProtocolHandler } from "./ProtocolHandler";
 import { UserInterfaceHandler } from "./uiHandlers/UserInterfaceHandler";
 import { EventEmitter } from "./utils/EventEmitter";
 import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
+import { getComponent, getBinaryComponentString } from "./utils/transactionTools";
+
+import { TextDocument } from 'vscode';
+import { Store } from "./stores/Store";
 
 //-----------------------------------------------------------------------------------
 //  3. process('protocol:set') - User selects one of the protocols (i.e. default one)
@@ -18,6 +22,11 @@ export class Services extends EventEmitter {
 
 	/** @var uiHandlers  list of user interface handlers */
 	private uiHandlers: UserInterfaceHandler<any>[] = [];
+
+	private stores: Store<any>[] = [];
+
+	private trackedDocuments: { [key: number]: TextDocument } = {};
+	private trackedDocumentsCount: number = 0;
 
 	async process(action: ServiceAction) : Promise<any> {
 		switch (action.type) {
@@ -47,9 +56,59 @@ export class Services extends EventEmitter {
 				// Response transaction is converted into Visualization and sent to UI
 				this.trigger('message', {
 					type: ServiceActionTypes.AppendResponse,
-					params: [ this.getVisualization('incoming', ...action.params) ]
+					params: [ this.onResponse(...action.params) ]
 				} as ServiceAction);
 				break;
+
+			// 6. User opens a BinaryStringInput in a new text document
+			case ServiceActionTypes.OpenTextDocument:
+				this.trigger('document:open', action.params[0]);
+				return this.trackedDocumentsCount;
+
+			// 7. User makes a change on a BinaryStringInput synced with an open document
+			case ServiceActionTypes.TextDocumentChanged:
+				const [ docId, valueNew ] = action.params;
+				if (valueNew.type === 'string') {
+					this.trigger('document:change', this.trackedDocuments[docId], valueNew.rawValue);
+				}
+				// else this.trigger('document:change', ..., '<binary data>')
+				break;
+		}
+	}
+
+	trackTextDocument(textDocument: TextDocument): void {
+		this.trackedDocuments[this.trackedDocumentsCount++] = textDocument;
+	}
+
+	textDocumentDidChange(textDocument: TextDocument): void {
+		for (let iStr of Object.keys(this.trackedDocuments)) {
+			let i = Number(iStr);
+			if (this.trackedDocuments[i] === textDocument) {
+				this.trigger('message', {
+					type: ServiceActionTypes.TextDocumentChanged,
+					params: [
+						i,
+						{
+							type: 'string',
+							rawValue: textDocument.getText(),
+						}
+					]
+				} as ServiceAction);
+				return;
+			}
+		}
+	}
+
+	textDocumentDidClose(textDocument: TextDocument): void {
+		for (let iStr of Object.keys(this.trackedDocuments)) {
+			let i = Number(iStr);
+			if (this.trackedDocuments[i] === textDocument) {
+				delete this.trackedDocuments[i];
+				this.trigger('message', {
+					type: ServiceActionTypes.TextDocumentClosed,
+					params: [i]
+				} as ServiceAction);
+			}
 		}
 	}
 
@@ -58,7 +117,7 @@ export class Services extends EventEmitter {
 		handler.on('response', (response: ITransaction) => {
 			this.trigger('message', {
 				type: ServiceActionTypes.AppendResponse,
-				params: [ this.getVisualization('incoming', response) ]
+				params: [ this.onResponse(response) ]
 			} as ServiceAction);
 		});
 
@@ -141,25 +200,29 @@ export class Services extends EventEmitter {
 		handler.do(transaction);
 	}
 
-	addUIHandler(handler: UserInterfaceHandler<any>) {
+	addUIHandler(handler: UserInterfaceHandler<any>): void {
 		this.uiHandlers.push(handler);
 	}
 
-	getVisualization(context: IContext, transaction: ITransaction): IVisualization {
+	addStore(store: Store<any>): void {
+		this.stores.push(store);
+	}
+
+	private getVisualization(context: IContext, transaction: ITransaction): IVisualization {
 		let items: IVisualizationItem[] = [];
 		let groupItems: { [key: string]: number } = {};
 
 		for (let i = 0; i < this.uiHandlers.length; i++) {
 			const handler = this.uiHandlers[i];
-			if (!handler.shouldDisplay(context, transaction)) {
+			if (!handler.shouldDisplay(transaction, context)) {
 				continue;
 			}
 
-			const ui = handler.getUI(transaction);
+			const ui = handler.getUI(transaction, context);
 			const viz: IVisualizationItem = {
 				handlerId: i,
 				ui,
-				value: handler.getValueFromTransaction( transaction )
+				value: handler.getValueFromTransaction(transaction, context)
 			};
 			if (ui.location === 'extra' && groupItems[ui.name] !== undefined) {
 				if (items[groupItems[ui.name]].ui.type == UITypes.OneOfMany) {
@@ -195,23 +258,39 @@ export class Services extends EventEmitter {
 		};
 	}
 
-	onVisualizationItemChange(
+	private onVisualizationItemChange(
 		viz: IVisualizationItem,
-		currentTransaction: ITransaction
+		tCurrent: ITransaction
 	): ITransaction {
-		let newTransaction = this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, currentTransaction);
+		let tNew = this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, tCurrent);
 
 		// TODO: in certain cases, this is not enough. Issues when multiple components should
 		// recompute and the expected output is given by calling one or more handlers twice.
 		for (let handler of this.uiHandlers) {
-			if (handler.shouldRecompute(currentTransaction, newTransaction)) {
-				newTransaction = handler.getTransactionFromValue(
-					handler.getValueFromTransaction(newTransaction),
-					newTransaction
+			if (handler.shouldRecompute(tCurrent, tNew)) {
+				tNew = handler.getTransactionFromValue(
+					handler.getValueFromTransaction(tNew, 'outgoing'),
+					tNew
 				);
 			}
 		}
 
-		return newTransaction;
+		for (let store of this.stores) {
+			if (store.shouldProcess(tNew, 'outgoing')) {
+				tNew = store.didRequestChange(tCurrent, tNew);
+			}
+		}
+
+		return tNew;
+	}
+
+	private onResponse(tResponse: ITransaction): IVisualization {
+		for (let store of this.stores) {
+			if (store.shouldProcess(tResponse, 'incoming')) {
+				store.didReceiveResponse(tResponse);
+			}
+		}
+
+		return this.getVisualization('incoming', tResponse);
 	}
 }

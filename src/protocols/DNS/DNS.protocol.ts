@@ -4,13 +4,57 @@ import { ProtocolHandler } from '../../ProtocolHandler';
 import { getComponent } from "../../utils/transactionTools";
 
 import DnsClient from "./client"
-import { IQuestion, RecordType, QuestionClass, RecordClass, IMessage, ResponseCode, IResourceRecord } from './client/interfaces';
+import { IQuestion, RecordType, QuestionExtraType, RecordClass, IMessage, ResponseCode, IResourceRecord, QuestionType } from './client/interfaces';
+import { Formats } from '../../utils/Formats';
+
+const recordTypeToStr: { [key in RecordType]: string } = {
+	[RecordType.A]     : 'A',
+	[RecordType.NS]    : 'NS',
+	[RecordType.MD]    : 'MD (obsolete)',
+	[RecordType.MF]    : 'MF (obsolete)',
+	[RecordType.CNAME] : 'CNAME',
+	[RecordType.SOA]   : 'SOA',
+	[RecordType.MB]    : 'MB',
+	[RecordType.MG]    : 'MG',
+	[RecordType.MR]    : 'MR',
+	[RecordType.NULL]  : 'NULL',
+	[RecordType.WKS]   : 'WKS',
+	[RecordType.PTR]   : 'PTR',
+	[RecordType.HINFO] : 'HINFO',
+	[RecordType.MINFO] : 'MINFO',
+	[RecordType.MX]    : 'MX',
+	[RecordType.TXT]   : 'TXT',
+};
+
+const strToRecordType: { [key: string]: QuestionType } = {
+	'A'    : RecordType.A,
+	'NS'   : RecordType.NS,
+	'MD'   : RecordType.MD,
+	'MF'   : RecordType.MF,
+	'CNAME': RecordType.CNAME,
+	'SOA'  : RecordType.SOA,
+	'MB'   : RecordType.MB,
+	'MG'   : RecordType.MG,
+	'MR'   : RecordType.MR,
+	'NULL' : RecordType.NULL,
+	'WKS'  : RecordType.WKS,
+	'PTR'  : RecordType.PTR,
+	'HINFO': RecordType.HINFO,
+	'MINFO': RecordType.MINFO,
+	'MX'   : RecordType.MX,
+	'TXT'  : RecordType.TXT,
+
+	'ALL'  : QuestionExtraType.ALL,
+	'AXFR' : QuestionExtraType.AXFR,
+	'MAILA': QuestionExtraType.MAILA,
+	'MAILB': QuestionExtraType.MAILB,
+};
 
 function resourceRecordsToTable(rr: IResourceRecord[]): string[][] {
 	return rr.map((r) => [
 		r.name,
-		String(r.class),
-		String(r.ttl),
+		recordTypeToStr[r.type],
+		Formats.secondsToString(r.ttl),
 		JSON.stringify(r.rdata)
 	]);
 }
@@ -18,30 +62,30 @@ function resourceRecordsToTable(rr: IResourceRecord[]): string[][] {
 export class DNSProtocol extends ProtocolHandler {
 
 	static fromNativeResponse(msg: IMessage): ITransaction {
-		let shortStatus: string
+		let shortStatus: string;
 
 		switch (msg.header.rcode) {
 			case ResponseCode.OK:
-				shortStatus = "OK"
-				break
+				shortStatus = "OK";
+				break;
 			case ResponseCode.FormatErr:
-				shortStatus = "Bad Request: Format Error"
-				break
+				shortStatus = "Bad Request: Format Error";
+				break;
 			case ResponseCode.ServerErr:
-				shortStatus = "Server Failure"
-				break
+				shortStatus = "Server Failure";
+				break;
 			case ResponseCode.NotFound:
-				shortStatus = "Domain Not Found"
-				break
+				shortStatus = "Domain Not Found";
+				break;
 			case ResponseCode.NotImpl:
-				shortStatus = "Operation Not Supported"
-				break
+				shortStatus = "Operation Not Supported";
+				break;
 			case ResponseCode.Refused:
-				shortStatus = "Server Refused"
-				break
+				shortStatus = "Server Refused";
+				break;
 
 			default:
-				shortStatus = "Unknown"
+				shortStatus = "Unknown";
 		}
 
 		let state: ITransactionState;
@@ -58,9 +102,9 @@ export class DNSProtocol extends ProtocolHandler {
 			shortStatus: shortStatus,
 			components: {
 				'id': msg.header.id,
-				'authoritativeAnswer': msg.header.aa,
+				'authoritative': msg.header.aa,
 				'truncated': msg.header.tc,
-				'recursionAvailable': msg.header.ra,
+				'can recurse': msg.header.ra,
 				'answers': resourceRecordsToTable(msg.answers),
 				'nsRecords': resourceRecordsToTable(msg.authorities),
 				'additionals': resourceRecordsToTable(msg.additionals),
@@ -92,7 +136,7 @@ export class DNSProtocol extends ProtocolHandler {
 					'MAILA',
 				],
 				required: true,
-				default: 'ALL',
+				default: 'A',
 			},
 		];
 		const recordComponents: IComponent[] = [
@@ -158,13 +202,13 @@ export class DNSProtocol extends ProtocolHandler {
 					ui: 'short'
 				},
 				{
-					name: 'authoritativeAnswer',
+					name: 'authoritative',
 					type: IComponentTypes.Boolean,
 					required: false,
 					default: false,
 					ui: {
 						location: 'short',
-						name: 'authoritativeAnswer',
+						name: 'authoritative',
 						type: UITypes.Boolean,
 						contextType: 'incoming'
 					},
@@ -182,25 +226,25 @@ export class DNSProtocol extends ProtocolHandler {
 					},
 				},
 				{
-					name: 'recursionDesired',
+					name: 'use recursion',
 					type: IComponentTypes.Boolean,
 					required: false,
 					default: false,
 					ui: {
 						location: 'short',
-						name: 'recursionDesired',
+						name: 'use recursion',
 						type: UITypes.Boolean,
 						contextType: 'outgoing'
 					},
 				},
 				{
-					name: 'recursionAvailable',
+					name: 'can recurse',
 					type: IComponentTypes.Boolean,
 					required: false,
 					default: false,
 					ui: {
 						location: 'short',
-						name: 'recursionAvailable',
+						name: 'can recurse',
 						type: UITypes.Boolean,
 						contextType: 'incoming'
 					},
@@ -262,11 +306,13 @@ export class DNSProtocol extends ProtocolHandler {
 	}
 
 	do( transaction: ITransaction ): void {
-		let questions: IQuestion[] = getComponent<string[][]>(transaction, 'questions').map( (q) => ({
-			name: q[0],
-			type: RecordType.A,
-			qClass: RecordClass.IN,
-		}));
+		let questions: IQuestion[] = getComponent<[string, string][]>(transaction, 'questions').map(
+			([name, typeStr]: [string, string]) => ({
+				name,
+				type: strToRecordType[typeStr],
+				qClass: RecordClass.IN,
+			})
+		);
 
 		let client = new DnsClient(getComponent<string>(transaction, 'host'));
 		client.queryMulti(questions).then( (msg) => {

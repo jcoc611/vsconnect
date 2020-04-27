@@ -3,7 +3,7 @@ import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
 export class StatusTextComponent extends UserInterfaceHandler<string> {
-	getUI(transaction: ITransaction): IUserInterface {
+	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.String,
 			name: 'Status',
@@ -11,20 +11,16 @@ export class StatusTextComponent extends UserInterfaceHandler<string> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
 		return (context === 'incoming');
 	}
 
-	getTransactionFromValue(
-		shortStatus: string,
-		currentTransaction: ITransaction
-	): ITransaction {
-		return Object.assign({}, currentTransaction, { shortStatus });
+	getTransactionFromValue(shortStatus: string, tCurrent: ITransaction): ITransaction {
+		throw new Error('Short status component is read only');
+		// return Object.assign({}, tCurrent, { shortStatus });
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): string {
-		return newTransaction.shortStatus;
+	getValueFromTransaction(tNew: ITransaction, context: IContext): string {
+		return tNew.shortStatus;
 	}
 }

@@ -59,6 +59,7 @@ export class TableEdit extends AbstractItem<any[][]> {
 			value: value
 		};
 		return <td><VisualizationItem onChange={ (viz) => this.updateValue(row, col, viz) }
+			openTextDocument={this.props.openTextDocument!}
 			item={item} readOnly={this.props.readOnly} /></td>;
 	}
 

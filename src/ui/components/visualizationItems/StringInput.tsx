@@ -13,6 +13,6 @@ export class StringInput extends AbstractItem<string> {
 		if (readOnly)
 			return <span className="stringInput">{value}</span>
 
-		return <input onChange={onInputChange} value={value} />;
+		return <input onChange={onInputChange} onContextMenu={this.openContextMenu} value={value} />;
 	}
 }

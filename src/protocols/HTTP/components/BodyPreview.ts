@@ -6,7 +6,7 @@ import { hasComponent, getComponent, setComponent, getBinaryComponentString } fr
 import { getHeaderValue } from "../utils/HeaderUtils";
 
 export class BodyPreviewComponent extends UserInterfaceHandler<string> {
-	getUI(transaction: ITransaction): IUserInterface {
+	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.HTML,
 			name: 'body',
@@ -15,27 +15,22 @@ export class BodyPreviewComponent extends UserInterfaceHandler<string> {
 		}
 	}
 
-	shouldDisplay(context: IContext, transaction: ITransaction): boolean {
-		if (context !== 'incoming' || !hasComponent(transaction, 'headers'))
+	shouldDisplay(t: ITransaction, context: IContext): boolean {
+		if (context !== 'incoming' || !hasComponent(t, 'headers'))
 			return false;
 
 		let contentType = getHeaderValue(
-			getComponent<KeyValues<string>>(transaction, 'headers'), 'content-type', ''
+			getComponent<KeyValues<string>>(t, 'headers'), 'content-type', ''
 		);
 		return contentType.toLowerCase().startsWith('text/');
 	}
 
-	getTransactionFromValue(
-		html: string,
-		currentTransaction: ITransaction
-	): ITransaction {
+	getTransactionFromValue(html: string, tCurrent: ITransaction): ITransaction {
 		// Read Only
-		return currentTransaction;
+		return tCurrent;
 	}
 
-	getValueFromTransaction(
-		newTransaction: ITransaction
-	): string {
-		return getBinaryComponentString(newTransaction, 'body');
+	getValueFromTransaction(tNew: ITransaction, context: IContext): string {
+		return getBinaryComponentString(tNew, 'body');
 	}
 }

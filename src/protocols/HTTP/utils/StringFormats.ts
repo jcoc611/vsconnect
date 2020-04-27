@@ -1,5 +1,9 @@
 'use strict';
 
+import { KeyValues } from "../../../interfaces";
+import { StoreItem } from "../../../stores/Store";
+import { CookieItem } from "../stores/CookieStore";
+
 export type HTTPQuery = { [key: string]: string | string[] | null };
 
 export class StringFormats {
@@ -65,5 +69,68 @@ export class StringFormats {
 
 	static percentDecode(str: string): string {
 		return decodeURIComponent(str.replace(/\+/g, " "));
+	}
+
+	static parseCookieHeader(header: string): KeyValues<string> {
+		if (header === '') {
+			return [];
+		}
+		let cookies = header.split('; ');
+		let result: KeyValues<string> = [];
+		for (let cookie of cookies) {
+			let kv = cookie.split('=').map(decodeURIComponent);
+			if (kv.length === 2)
+				result.push(kv as [string, string]);
+		}
+		return result;
+	}
+
+	static serializeCookieHeader(cookies: KeyValues<string>): string {
+		return cookies.map(
+			([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value)
+		).join('; ');
+	}
+
+	static parseSetCookiesHeader(headers: string[], hostDefault: string): StoreItem<CookieItem>[] {
+		return headers.map((setCookie) => {
+			let parts = setCookie.split('; ');
+			let [key, value] = parts[0].split('=').map(decodeURIComponent);
+			let setCookieOptions : { [key: string]: string } = {};
+			for (let i = 1; i < parts.length; i++) {
+				let [partKey, partValue] = parts[i].split('=');
+				setCookieOptions[partKey.toLowerCase()] = partValue;
+			}
+
+			let ttlSec: number;
+			if (setCookieOptions['max-age'] !== undefined) {
+				ttlSec = Number(setCookieOptions['max-age']);
+			} else if (setCookieOptions['expires'] !== undefined) {
+				// @ts-ignore date subtraction not in TS?
+				ttlSec = (new Date(setCookieOptions['expires']) - new Date()) / 1000;
+			} else {
+				ttlSec = Number.POSITIVE_INFINITY;
+			}
+
+			let storeItem: StoreItem<CookieItem> = {
+				ttlSec,
+				timestampSec: (new Date()).getTime() / 1000,
+
+				data: {
+					name: key,
+					value: value,
+					domain: setCookieOptions['domain'] || hostDefault,
+					path: setCookieOptions['path'],
+
+					tlsOnly: (setCookieOptions['secure'] !== undefined),
+					httpOnly: (setCookieOptions['httponly'] !== undefined),
+					sameSite: 'strict',
+				}
+			};
+			return storeItem;
+		});
+	}
+
+	static serializeSetCookieHeader(items: StoreItem<CookieItem>[]) {
+		// TODO
 	}
 }
