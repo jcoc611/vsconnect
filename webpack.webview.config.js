@@ -2,8 +2,8 @@ const path = require( 'path' );
 module.exports = {
 	entry: './src/ui/console.tsx',
 	output: {
-		filename: 'bundle.js',
-		path: path.resolve(__dirname, 'dist-webview')
+		filename: 'bundle-webview.js',
+		path: path.resolve(__dirname, 'dist')
 	},
 	resolve: {
 		extensions: [ '.tsx', '.ts', '.js' ]
@@ -12,8 +12,11 @@ module.exports = {
 		rules: [
 			{
 				test: /\.tsx?$/,
-				use: 'ts-loader',
+				loader: 'ts-loader',
 				exclude: /node_modules/,
+				options: {
+					configFile: 'tsconfig.webview.json'
+				}
 			},
 		],
 	},

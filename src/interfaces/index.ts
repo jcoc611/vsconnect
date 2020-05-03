@@ -9,6 +9,7 @@ export enum UITypes {
 	Host,
 	BytesBinary,
 	BytesString,
+	BytesInline,
 	Textarea,
 	Table,
 	Boolean,
@@ -27,6 +28,7 @@ export interface IUserInterface {
 
 	shortDescription?: string;
 	allowedValues?: any[];
+	defaultValue?: any;
 	contextType?: IContext;
 	components?: IUserInterface[];
 	count?: string;

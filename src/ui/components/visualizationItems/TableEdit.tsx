@@ -4,20 +4,20 @@ import { AbstractItem } from './AbstractItem';
 import { VisualizationItem } from '../VisualizationItem';
 
 export class TableEdit extends AbstractItem<any[][]> {
-	triggerChange(newValue: any[][]) {
+	triggerChange(newValue: any[][]): void {
 		if (this.props.onChange && !this.props.readOnly) {
 			this.props.onChange(newValue);
 		}
 	}
 
-	updateValue(row: number, col: number, viz: IVisualizationItem) {
+	updateValue(row: number, col: number, viz: IVisualizationItem): void {
 		const { value } = this.props;
 		let newValue: any[][] = this.cloneValue(value);
 
 		if (row < newValue.length) {
 			newValue[row][col] = viz.value;
 		} else {
-			let newRow = new Array(this.props.components!.length).fill('');
+			let newRow = this.defaultRowValues();
 			newRow[col] = viz.value;
 			newValue.push(newRow);
 		}
@@ -38,8 +38,20 @@ export class TableEdit extends AbstractItem<any[][]> {
 		return clone;
 	}
 
+	defaultRowValues(): any[] {
+		let valuesDefault = [];
+		for (let component of this.props.components!) {
+			if (component.defaultValue !== undefined) {
+				valuesDefault.push(component.defaultValue);
+			} else {
+				valuesDefault.push('');
+			}
+		}
+		return valuesDefault;
+	}
+
 	renderHeader( components: IUserInterface[] ): JSX.Element {
-		let elements = components.map( (i) => <td>{i.name}</td> );
+		let elements = components.map( (i) => <td key={i.name}>{i.name}</td> );
 		return <thead><tr>{elements}</tr></thead>;
 	}
 
@@ -49,7 +61,7 @@ export class TableEdit extends AbstractItem<any[][]> {
 			this.renderCell(row, col, components![col], v)
 		) );
 
-		return <tr>{cells}</tr>;
+		return <tr key={row}>{cells}</tr>;
 	}
 
 	renderCell(row: number, col: number, component: IUserInterface, value: any) {
@@ -58,9 +70,12 @@ export class TableEdit extends AbstractItem<any[][]> {
 			ui: component,
 			value: value
 		};
-		return <td><VisualizationItem onChange={ (viz) => this.updateValue(row, col, viz) }
-			openTextDocument={this.props.openTextDocument!}
-			item={item} readOnly={this.props.readOnly} /></td>;
+		return <td key={col}>
+			<VisualizationItem
+				item={item} readOnly={this.props.readOnly}
+				onChange={ (viz) => this.updateValue(row, col, viz) }
+				openTextDocument={this.props.openTextDocument!} />
+			</td>;
 	}
 
 	render() {
@@ -70,7 +85,7 @@ export class TableEdit extends AbstractItem<any[][]> {
 		let header: JSX.Element = <thead></thead>;
 
 		if (readOnly && value.length == 0)
-			return <div className="kvedit">No items</div>;
+			return <div className='kvedit'>No items</div>;
 
 		if (components) {
 			header = this.renderHeader(components);
@@ -81,10 +96,11 @@ export class TableEdit extends AbstractItem<any[][]> {
 		}
 
 		if (!readOnly) {
-			content.push( this.renderRow(value.length, new Array(components!.length).fill('')) );
+			let valuesDefault = this.defaultRowValues();
+			content.push( this.renderRow(value.length, valuesDefault) );
 		}
 
-		return <div className="kvedit">
+		return <div className='kvedit'>
 			<table>
 				{header}
 				<tbody>

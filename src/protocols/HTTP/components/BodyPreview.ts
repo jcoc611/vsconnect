@@ -20,7 +20,8 @@ export class BodyPreviewComponent extends UserInterfaceHandler<string> {
 			return false;
 
 		let contentType = getHeaderValue(
-			getComponent<KeyValues<string>>(t, 'headers'), 'content-type', ''
+			getComponent<KeyValues<string>>(t, 'headers'),
+			'content-type', ''
 		);
 		return contentType.toLowerCase().startsWith('text/');
 	}

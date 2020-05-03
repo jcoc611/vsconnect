@@ -52,7 +52,7 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 		if (valueNew.length < 4 || (valueNew[0] === '' && valueNew[1] === ''))
 			return tCurrent;
 
-		let newTransaction = setComponent(tCurrent, 'oauth-1.0', valueNew);
+		let newTransaction = setComponent(tCurrent, 'extra:oauth-1.0', valueNew);
 
 		let consumer = { key: valueNew[0], secret: valueNew[1] };
 		let tokens: OAuth1Token | undefined = undefined;
@@ -81,13 +81,13 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 	}
 
 	getValueFromTransaction(tNew: ITransaction, context: IContext): string[] {
-		if (hasComponent(tNew, 'oauth-1.0'))
-			return getComponent<string[]>(tNew, 'oauth-1.0');
+		if (hasComponent(tNew, 'extra:oauth-1.0'))
+			return getComponent<string[]>(tNew, 'extra:oauth-1.0');
 
 		return ['', '', '', ''];
 	}
 
 	shouldRecompute(tOld: ITransaction, tNew: ITransaction): boolean {
-		return hasComponent(tNew, 'oauth-1.0');
+		return hasComponent(tNew, 'extra:oauth-1.0');
 	}
 }

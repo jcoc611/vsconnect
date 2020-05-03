@@ -64,7 +64,7 @@ export function setKeyValueComponent<T>(t: ITransaction, nameComponent: string, 
 
 	let ikey = valueNew.findIndex(([key, _]) => {
 		if (typeof(key) === 'string' && typeof(nameKey) === 'string') {
-			return (key.toLowerCase() === nameKey);
+			return (key.toLowerCase() === nameKey.toLowerCase());
 		}
 		return (key === nameKey);
 	});

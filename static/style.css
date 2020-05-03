@@ -320,6 +320,10 @@ textarea {
 	display: flex;
 }
 
+.prompt, .expansionToggle {
+	user-select: none;
+}
+
 .request .prompt, .response .prompt {
 	width: 15px;
 	line-height: 22px;
@@ -547,4 +551,20 @@ div.form .form-item > span {
 
 #contextmenu-wrapper .menu-item:hover {
 	background-color: var(--vscode-menu-selectionBackground);
+}
+
+/** inline */
+.inline .dropdown-control, .inline .bytesStringInput,
+.inline .fileInput {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.optionContent .inline .fileInput input {
+	display: inline-block;
+	width: 10px;
+}
+
+.optionContent .inline .fileInput label {
+	padding: 0px 5px;
 }

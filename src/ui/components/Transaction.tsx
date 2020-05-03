@@ -37,21 +37,24 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		this.state = {
 			// expanded by default unless it is a sent outgoing message
 			isExpanded: !(props.visualization.context === 'outgoing' && props.readOnly),
-			openTab: this.getFirstExtraName(props)
+			openTab: Transaction.getFirstExtraName(props),
 		};
 	}
 
-	componentWillReceiveProps(props: TransactionProps) {
-		const { isExpanded } = this.state;
-		for (let item of props.visualization.items) {
-			if (item.ui.name === this.state.openTab)
-				return;
+	static getDerivedStateFromProps(
+		propsNew: TransactionProps,
+		stateOld: TransactionState
+	): TransactionState | null {
+		const { isExpanded, openTab } = stateOld;
+		for (let item of propsNew.visualization.items) {
+			if (item.ui.name === openTab)
+				return null;
 		}
 
-		this.setState({ isExpanded, openTab: this.getFirstExtraName(props) });
+		return { isExpanded, openTab: Transaction.getFirstExtraName(propsNew) };
 	}
 
-	private getFirstExtraName(props: TransactionProps): string | null {
+	private static getFirstExtraName(props: TransactionProps): string | null {
 		let extraItems = props.visualization.items.filter( (i) => i.ui.location === 'extra' );
 		if (extraItems.length === 0) {
 			return null;
@@ -83,33 +86,42 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		} = this.props;
 
 		if (visualization.context === 'outgoing') {
-			short.push(<Dropdown name='Protocols' key='Protocols'
+			short.push(<Dropdown name='Protocol' key='Protocol'
+				location={'short'}
 				value={visualization.transaction.protocolId}
 				allowedValues={allProtocols} readOnly={readOnly} onChange={setProtocol} />);
 		} else {
-			short.push(<span className='protocol'>{visualization.transaction.protocolId}</span>);
+			short.push(<span className='protocol' key='Protocol'>
+				{visualization.transaction.protocolId}</span>);
 		}
 
 		for (let item of visualization.items) {
 			let itemElement = <VisualizationItem
-				key={item.ui.name}
 				item={item} readOnly={readOnly} onChange={this.handleUIChange}
 				openTextDocument={openTextDocument} />;
 
 			if (item.ui.location === 'short') {
 				if (visualization.context === 'incoming') {
 					if (item.ui.type === UITypes.Boolean) {
-						short.push(<span className='shortItem'>{itemElement}</span>);
+						short.push(
+							<span className='shortItem' key={item.ui.name}>
+								{itemElement}
+							</span>
+						);
 					} else {
 						short.push(
-							<span className='shortItem'>
+							<span className='shortItem' key={item.ui.name}>
 								<span className='shortItem-name'>{item.ui.name}</span>
 								{itemElement}
 							</span>
 						);
 					}
 				} else {
-					short.push(itemElement);
+					short.push(
+						<span className='shortItem' key={item.ui.name}>
+							{itemElement}
+						</span>
+					);
 				}
 			} else {
 				headers.push(item);
@@ -118,7 +130,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		}
 
 		if (!readOnly) {
-			short.push(<button onClick={sendCurrentRequest}>send</button>);
+			short.push(<button onClick={sendCurrentRequest} key='send'>send</button>);
 		}
 
 		return { short, headers, extra };
@@ -133,12 +145,12 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		if (item.ui.count)
 			count = <span className='count'>{item.ui.count}</span>;
 
-		return <button onClick={() => this.setOpenTab(item.ui.name)}
-			className={(this.state.openTab === item.ui.name)? 'selected': ''}>{[item.ui.name, count]}</button>;
+		return <button onClick={() => this.setOpenTab(item.ui.name)} key={`tab-${item.ui.name}`}
+			className={(this.state.openTab === item.ui.name)? 'selected': ''}>{item.ui.name}{count}</button>;
 	}
 
 	renderShortTabPreview = (item: IVisualizationItem): JSX.Element => (
-		<span className='shortItem'>
+		<span className='shortItem' key={item.ui.name}>
 			<span className='shortItem-name'>{item.ui.name}</span>
 			<span>{item.ui.count}</span>
 		</span>

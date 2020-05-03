@@ -54,7 +54,7 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 	renderRow(index: number, [key, value]: [string, string]) {
 		let keyWidth: string = Math.max(Math.min(key.length + 2, 150), 20) + 'ch';
 		let valueWidth: string = Math.max(Math.min(value.length + 2, 150), 20) + 'ch';
-		return <tr>
+		return <tr key={index}>
 			<td><input type="text" placeholder="Name" value={key} readOnly={this.props.readOnly}
 				style={({ width: keyWidth })}
 				onContextMenu={this.openContextMenu}

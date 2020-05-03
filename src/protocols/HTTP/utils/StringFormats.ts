@@ -39,9 +39,7 @@ export class StringFormats {
 		let data: HTTPQuery = {};
 
 		for (let component of components) {
-			let i = component.indexOf('=');
-			let key = (i < 0)? component : component.substr(0, i);
-			let value = (i < 0)? '' : component.substr(i + 1);
+			let [key, value] = StringFormats.parseKeyValue(component);
 
 			// Handle duplicate keys formkey=formvalue1&formkey=formvalue2
 			if (data[key]) {
@@ -49,9 +47,9 @@ export class StringFormats {
 				if (!Array.isArray(currentVal))
 					data[key] = (typeof(currentVal) === 'string')? [currentVal]: [];
 
-				(data[key] as string[]).push(decodeURIComponent(value));
+				(<string[]> data[key]).push(value);
 			} else {
-				data[key] = decodeURIComponent(value);
+				data[key] = value;
 			}
 		}
 
@@ -78,9 +76,8 @@ export class StringFormats {
 		let cookies = header.split('; ');
 		let result: KeyValues<string> = [];
 		for (let cookie of cookies) {
-			let kv = cookie.split('=').map(decodeURIComponent);
-			if (kv.length === 2)
-				result.push(kv as [string, string]);
+			let kv = StringFormats.parseKeyValue(cookie);
+			result.push(kv);
 		}
 		return result;
 	}
@@ -94,10 +91,10 @@ export class StringFormats {
 	static parseSetCookiesHeader(headers: string[], hostDefault: string): StoreItem<CookieItem>[] {
 		return headers.map((setCookie) => {
 			let parts = setCookie.split('; ');
-			let [key, value] = parts[0].split('=').map(decodeURIComponent);
+			let [key, value] = StringFormats.parseKeyValue(parts[0]);
 			let setCookieOptions : { [key: string]: string } = {};
 			for (let i = 1; i < parts.length; i++) {
-				let [partKey, partValue] = parts[i].split('=');
+				let [partKey, partValue] = StringFormats.parseKeyValue(parts[i]);
 				setCookieOptions[partKey.toLowerCase()] = partValue;
 			}
 
@@ -132,5 +129,13 @@ export class StringFormats {
 
 	static serializeSetCookieHeader(items: StoreItem<CookieItem>[]) {
 		// TODO
+	}
+
+	private static parseKeyValue(keyValue: string): [string, string] {
+		let i = keyValue.indexOf('=');
+		let key = (i < 0)? keyValue : keyValue.substr(0, i);
+		let value = (i < 0)? '' : keyValue.substr(i + 1);
+
+		return [ decodeURIComponent(key), decodeURIComponent(value) ];
 	}
 }

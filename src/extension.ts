@@ -21,9 +21,6 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 }
 
-/**
- * Manages cat coding webview panels
- */
 class VSConnectPanel {
 	/**
 	 * Track the currently panel. Only allow a single panel to exist at a time.
@@ -59,7 +56,7 @@ class VSConnectPanel {
 
 				// And restrict the webview to only loading content from our extension's `media` directory.
 				localResourceRoots: [
-					vscode.Uri.file(path.join(extensionPath, 'dist-webview')),
+					vscode.Uri.file(path.join(extensionPath, 'dist')),
 					vscode.Uri.file(path.join(extensionPath, 'static'))
 				],
 			}
@@ -202,7 +199,7 @@ class VSConnectPanel {
 
 		// And the uri we use to load this script in the webview
 		const scriptPathOnDisk = vscode.Uri.file(
-			path.join(this._extensionPath, 'dist-webview', 'bundle.js')
+			path.join(this._extensionPath, 'dist', 'bundle-webview.js')
 		);
 		const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
 

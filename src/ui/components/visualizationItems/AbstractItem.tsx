@@ -9,9 +9,13 @@ export interface AbstractItemProps<T, TT = T> {
 
 	name: string;
 	value: T;
+	location: IUserInterface['location'];
+
 	readOnly?: boolean;
 	allowedValues?: T[];
+	defaultValue?: T;
 	components?: IUserInterface[];
+	inline?: boolean;
 }
 
 export abstract class AbstractItem<T, S={}, TT = T> extends React.Component<AbstractItemProps<T, TT>, S> {

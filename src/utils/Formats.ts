@@ -1,12 +1,17 @@
 'use strict';
 
+const nsToMs = 1000000;
 const msToS = 1000;
 const sToMin = 60;
 const minToHour = 60;
 
 export class Formats {
-	static secondsToString(s: number) {
+	static secondsToString(s: number): string {
 		return this.msToString(s * msToS);
+	}
+
+	static hrToString([s, ns]: [number, number]): string {
+		return this.msToString((s * msToS) + (ns / nsToMs));
 	}
 
 	static msToString(ms: number): string {

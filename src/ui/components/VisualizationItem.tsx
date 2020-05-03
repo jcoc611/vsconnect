@@ -8,7 +8,7 @@ import { Textarea } from './visualizationItems/Textarea';
 import { BooleanInput } from './visualizationItems/BooleanInput';
 import { TableEdit } from './visualizationItems/TableEdit';
 import { HTML } from './visualizationItems/HTML';
-import { BytesBinaryInput, BytesStringInput } from './visualizationItems/BytesInput';
+import { BytesBinaryInput, BytesStringInput, BytesInlineInput } from './visualizationItems/BytesInput';
 
 interface VisualizationItemProps {
 	onChange?: (viz: IVisualizationItem) => void;
@@ -34,8 +34,11 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 		};
 	}
 
-	componentWillReceiveProps(newProps: VisualizationItemProps) {
-		this.setState({ transientValue: newProps.item.value });
+	static getDerivedStateFromProps(
+		propsNew: VisualizationItemProps,
+		stateOld: VisualizationItemState
+	): VisualizationItemState | null {
+		return { transientValue: propsNew.item.value };
 	}
 
 	handleChange = (newValue: any, overrideItem: boolean = false): void => {
@@ -86,6 +89,11 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 				openTextDocument = this.props.openTextDocument;
 				break;
 
+			case UITypes.BytesInline:
+				ElementType = BytesInlineInput;
+				openTextDocument = this.props.openTextDocument;
+				break;
+
 			case UITypes.Textarea:
 				ElementType = Textarea;
 				break;
@@ -119,11 +127,13 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 			return '';
 		}
 
-		return <ElementType name={item.ui.name} value={value} readOnly={readOnly}
+		return <ElementType name={item.ui.name} value={value}
+			readOnly={readOnly} location={item.ui.location}
 			onChange={this.handleChange}
 			openTextDocument={this.doOpenTextDocument}
 			components={item.ui.components}
-			allowedValues={item.ui.allowedValues} />;
+			allowedValues={item.ui.allowedValues}
+			defaultValue={item.ui.defaultValue} />;
 	}
 }
 
@@ -138,11 +148,11 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem[], OneOfManyState, a
 		super(initialProps);
 
 		this.state = {
-			selected: this.defaultSelected(initialProps),
+			selected: OneOfManyItem.defaultSelected(initialProps),
 		}
 	}
 
-	private defaultSelected(props: AbstractItemProps<IVisualizationItem[]>): string {
+	private static defaultSelected(props: AbstractItemProps<IVisualizationItem[]>): string {
 		const { value } = props;
 		let filteredIndex = value.findIndex((item) => item.ui.count !== undefined);
 
@@ -155,9 +165,14 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem[], OneOfManyState, a
 		return '';
 	}
 
-	componentWillReceiveProps(newProps: AbstractItemProps<IVisualizationItem[]>) {
-		if (newProps.value.findIndex((item) => item.ui.subName === this.state.selected) === -1)
-			this.setState({ selected: this.defaultSelected(newProps) });
+	static getDerivedStateFromProps(
+		propsNew: AbstractItemProps<IVisualizationItem[]>,
+		stateOld: OneOfManyState
+	): OneOfManyState | null {
+		if (propsNew.value.findIndex((item) => item.ui.subName === stateOld.selected) === -1)
+			return { selected: OneOfManyItem.defaultSelected(propsNew) };
+
+		return null;
 	}
 
 	selectItem = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,7 +196,7 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem[], OneOfManyState, a
 		for (let item of value) {
 			let isSelected: boolean = (item.ui.subName === this.state.selected);
 			options.push(
-				<label>
+				<label key={item.ui.subName}>
 					<input type="radio" name={`oneOfMany-${radioUniqueId}`} value={item.ui.subName}
 						onChange={this.selectItem} checked={isSelected} />
 					{item.ui.subName}
@@ -236,7 +251,7 @@ class FormItem extends AbstractItem<any[]> {
 				value: value[i],
 			};
 			childrenItems.push(
-				<div className="form-item">
+				<div className="form-item" key={i}>
 					<span>{viz.ui.name}</span>
 					<VisualizationItem
 						key={i} onChange={this.handleChange}

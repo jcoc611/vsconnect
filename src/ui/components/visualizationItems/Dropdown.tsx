@@ -31,14 +31,19 @@ export class Dropdown extends AbstractItem<string, DropdownState> {
 		};
 	}
 
-	componentWillReceiveProps(newProps: AbstractItemProps<string>) {
-		if (newProps.value) {
-			if (newProps.value !== this.state.value) {
-				this.setState({ value: newProps.value })
+	static getDerivedStateFromProps(
+		propsNew: AbstractItemProps<string>,
+		stateOld: DropdownState
+	): DropdownState | null {
+		if (propsNew.value) {
+			if (propsNew.value !== stateOld.value) {
+				return { isOpen: stateOld.isOpen, value: propsNew.value };
 			}
-		} else {
-			this.setState({ value: null });
+		} else if(stateOld.value !== null) {
+			return { isOpen: stateOld.isOpen, value: null };
 		}
+
+		return null;
 	}
 
 	componentDidMount () {

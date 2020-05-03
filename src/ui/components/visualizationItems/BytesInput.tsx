@@ -1,8 +1,9 @@
 'use strict';
 import * as React from 'react';
-import { AbstractItem } from './AbstractItem';
+import { AbstractItem, AbstractItemProps } from './AbstractItem';
 import { BytesValue } from '../../../interfaces';
 import { Formats } from '../../../utils/Formats';
+import { Dropdown } from './Dropdown';
 
 export class BytesBinaryInput extends AbstractItem<BytesValue> {
 	render() {
@@ -61,7 +62,7 @@ export class BytesStringInput extends AbstractItem<BytesValue> {
 	}
 
 	render() {
-		const { onChange, value, readOnly, openTextDocument } = this.props;
+		const { onChange, readOnly, inline } = this.props;
 		let onInputChange;
 		if (onChange !== undefined) {
 			onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange({
@@ -74,7 +75,63 @@ export class BytesStringInput extends AbstractItem<BytesValue> {
 
 		return <div className="bytesStringInput">
 			<textarea onChange={onInputChange} onContextMenu={this.openContextMenu} value={valueActual} readOnly={readOnly} />
-			<div className="bytes-bottomBar"><button onClick={this.openInNewTab}>open in new tab</button></div>
+			{(inline)? null : <div className="bytes-bottomBar"><button onClick={this.openInNewTab}>open in new tab</button></div>}
+		</div>;
+	}
+}
+
+interface BytesInlineState {
+	type: 'file' | 'text';
+}
+
+export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState> {
+	state: BytesInlineState;
+
+	constructor(props: AbstractItemProps<BytesValue>) {
+		super(props);
+
+		this.state = { type: 'text' };
+	}
+
+	setType = (newType: string) => {
+		if (newType === 'text' || newType === 'file') {
+			this.setState({ type: newType });
+		}
+	}
+
+	render() {
+		const {
+			onChange, openTextDocument,
+
+			name, value, location,
+			readOnly, allowedValues,
+			components
+		} = this.props;
+		const { type } = this.state;
+
+		let editItem: JSX.Element;
+		if (type === 'file') {
+			editItem = <BytesBinaryInput name={name} value={value}
+				location={location}
+				readOnly={readOnly} allowedValues={allowedValues}
+				components={components} inline={true}
+
+				onChange={onChange} openTextDocument={openTextDocument} />;
+		} else {
+			editItem = <BytesStringInput name={name} value={value}
+				location={location}
+				readOnly={readOnly} allowedValues={allowedValues}
+				components={components} inline={true}
+
+				onChange={onChange} openTextDocument={openTextDocument} />;
+		}
+
+
+		return <div className="bytesInlineInput inline">
+			<Dropdown name="bytes inline type" value={type} location={location}
+				allowedValues={['text', 'file']} readOnly={readOnly}
+				onChange={this.setType} />
+			{editItem}
 		</div>;
 	}
 }

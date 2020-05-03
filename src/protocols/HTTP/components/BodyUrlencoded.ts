@@ -1,6 +1,6 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext, BytesValue } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, setKeyValueComponent } from "../../../utils/transactionTools";
 
 export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<string>> {
 	defaultValue(): KeyValues<string> {
@@ -28,10 +28,13 @@ export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<stri
 			return tCurrent;
 
 		let newStr: string = this.serializeQuery(valueNew);
-		return setComponent(tCurrent, 'body', {
+
+		let tNew: ITransaction = tCurrent;
+		tNew = setKeyValueComponent(tNew, 'headers', 'Content-Type', 'application/x-www-form-urlencoded');
+		return setComponent(tNew, 'body', <BytesValue> {
 			type: 'string',
 			rawValue: newStr
-		} as BytesValue);
+		});
 	}
 
 	getValueFromTransaction(tNew: ITransaction, context: IContext): KeyValues<string> {
