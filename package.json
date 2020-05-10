@@ -1,6 +1,6 @@
 {
 	"name": "vsconnect",
-	"version": "0.2.5",
+	"version": "0.2.6",
 	"main": "./dist/extension",
 	"engines": {
 		"vscode": "^1.39.0"
