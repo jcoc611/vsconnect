@@ -74,7 +74,9 @@ export class BytesStringInput extends AbstractItem<BytesValue> {
 		let valueActual: string = this.valueActual();
 
 		return <div className="bytesStringInput">
-			<textarea onChange={onInputChange} onContextMenu={this.openContextMenu} value={valueActual} readOnly={readOnly} />
+			<textarea value={valueActual} readOnly={readOnly}
+				onChange={onInputChange} onContextMenu={this.openContextMenu}
+				autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
 			{(inline)? null : <div className="bytes-bottomBar"><button onClick={this.openInNewTab}>open in new tab</button></div>}
 		</div>;
 	}
@@ -101,7 +103,7 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 
 	render() {
 		const {
-			onChange, openTextDocument,
+			onChange, openTextDocument, getCommandPreview,
 
 			name, value, location,
 			readOnly, allowedValues,
@@ -116,21 +118,24 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 				readOnly={readOnly} allowedValues={allowedValues}
 				components={components} inline={true}
 
-				onChange={onChange} openTextDocument={openTextDocument} />;
+				onChange={onChange} openTextDocument={openTextDocument}
+				getCommandPreview={getCommandPreview} />;
 		} else {
 			editItem = <BytesStringInput name={name} value={value}
 				location={location}
 				readOnly={readOnly} allowedValues={allowedValues}
 				components={components} inline={true}
 
-				onChange={onChange} openTextDocument={openTextDocument} />;
+				onChange={onChange} openTextDocument={openTextDocument}
+				getCommandPreview={getCommandPreview} />;
 		}
 
 
 		return <div className="bytesInlineInput inline">
 			<Dropdown name="bytes inline type" value={type} location={location}
 				allowedValues={['text', 'file']} readOnly={readOnly}
-				onChange={this.setType} />
+				onChange={this.setType}
+				getCommandPreview={getCommandPreview} />
 			{editItem}
 		</div>;
 	}

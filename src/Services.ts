@@ -1,19 +1,14 @@
+'use strict';
+
 import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI, UITypes } from "./interfaces";
 import { ProtocolHandler } from "./ProtocolHandler";
 import { UserInterfaceHandler } from "./uiHandlers/UserInterfaceHandler";
 import { EventEmitter } from "./utils/EventEmitter";
 import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
-import { getComponent, getBinaryComponentString } from "./utils/transactionTools";
 
 import { TextDocument } from 'vscode';
 import { Store } from "./stores/Store";
-
-//-----------------------------------------------------------------------------------
-//  3. process('protocol:set') - User selects one of the protocols (i.e. default one)
-//  4. Protocol Handler provides a default ITransaction
-//  5. getVisualization(ITransaction) - Matching UI handlers provide visualizations
-//-----------------------------------------------------------------------------------
-
+import { Sandbox } from "./utils/Sandbox";
 
 
 export class Services extends EventEmitter {
@@ -27,6 +22,8 @@ export class Services extends EventEmitter {
 
 	private trackedDocuments: { [key: number]: TextDocument } = {};
 	private trackedDocumentsCount: number = 0;
+
+	private sandbox: Sandbox = new Sandbox();
 
 	async process(action: ServiceAction) : Promise<any> {
 		switch (action.type) {
@@ -54,10 +51,10 @@ export class Services extends EventEmitter {
 			// 5. Protocol Handler gets a new response
 			case ServiceActionTypes.VisualizeResponse:
 				// Response transaction is converted into Visualization and sent to UI
-				this.trigger('message', {
+				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.AppendResponse,
 					params: [ this.onResponse(...action.params) ]
-				} as ServiceAction);
+				});
 				break;
 
 			// 6. User opens a BinaryStringInput in a new text document
@@ -73,6 +70,11 @@ export class Services extends EventEmitter {
 				}
 				// else this.trigger('document:change', ..., '<binary data>')
 				break;
+
+			// 8. User types in scripting field
+			case ServiceActionTypes.PreviewInSandbox:
+				const [ strCode ] = action.params;
+				return this.sandbox.preview(strCode);
 		}
 	}
 
@@ -84,7 +86,7 @@ export class Services extends EventEmitter {
 		for (let iStr of Object.keys(this.trackedDocuments)) {
 			let i = Number(iStr);
 			if (this.trackedDocuments[i] === textDocument) {
-				this.trigger('message', {
+				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.TextDocumentChanged,
 					params: [
 						i,
@@ -93,7 +95,7 @@ export class Services extends EventEmitter {
 							rawValue: textDocument.getText(),
 						}
 					]
-				} as ServiceAction);
+				});
 				return;
 			}
 		}
@@ -104,10 +106,10 @@ export class Services extends EventEmitter {
 			let i = Number(iStr);
 			if (this.trackedDocuments[i] === textDocument) {
 				delete this.trackedDocuments[i];
-				this.trigger('message', {
+				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.TextDocumentClosed,
 					params: [i]
-				} as ServiceAction);
+				});
 			}
 		}
 	}
@@ -115,10 +117,10 @@ export class Services extends EventEmitter {
 	// Adding protocols
 	addProtocol(name: string, handler: ProtocolHandler): void {
 		handler.on('response', (response: ITransaction) => {
-			this.trigger('message', {
+			this.trigger('message', <ServiceAction> {
 				type: ServiceActionTypes.AppendResponse,
 				params: [ this.onResponse(response) ]
-			} as ServiceAction);
+			});
 		});
 
 		let metadata = handler.getMetadata();
@@ -198,6 +200,8 @@ export class Services extends EventEmitter {
 		// }
 
 		handler.do(transaction);
+
+		this.sandbox.addRequest(transaction);
 	}
 
 	addUIHandler(handler: UserInterfaceHandler<any>): void {
@@ -209,7 +213,7 @@ export class Services extends EventEmitter {
 	}
 
 	private getVisualization(context: IContext, transaction: ITransaction): IVisualization {
-		let items: IVisualizationItem[] = [];
+		let items: IVisualizationItem<any>[] = [];
 		let groupItems: { [key: string]: number } = {};
 
 		for (let i = 0; i < this.uiHandlers.length; i++) {
@@ -219,7 +223,7 @@ export class Services extends EventEmitter {
 			}
 
 			const ui = handler.getUI(transaction, context);
-			const viz: IVisualizationItem = {
+			const viz: IVisualizationItem<any> = {
 				handlerId: i,
 				ui,
 				value: handler.getValueFromTransaction(transaction, context)
@@ -259,7 +263,7 @@ export class Services extends EventEmitter {
 	}
 
 	private onVisualizationItemChange(
-		viz: IVisualizationItem,
+		viz: IVisualizationItem<any>,
 		tCurrent: ITransaction
 	): ITransaction {
 		let tNew = this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, tCurrent);
@@ -285,6 +289,8 @@ export class Services extends EventEmitter {
 	}
 
 	private onResponse(tResponse: ITransaction): IVisualization {
+		this.sandbox.addResponse(tResponse);
+
 		for (let store of this.stores) {
 			if (store.shouldProcess(tResponse, 'incoming')) {
 				store.didReceiveResponse(tResponse);

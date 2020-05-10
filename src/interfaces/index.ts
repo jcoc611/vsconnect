@@ -94,16 +94,18 @@ export interface ITransaction {
 	components: { [name: string]: any };
 }
 
-export interface IVisualizationItem {
+export interface IVisualizationItem<T> {
 	handlerId: number;
 	ui: IUserInterface;
-	value: any;
+	value: T;
+	valueFunction?: T;
 }
 
 export interface IVisualization {
 	context: IContext;
-	items: IVisualizationItem[];
+	items: IVisualizationItem<any>[];
 	transaction: ITransaction;
+	resDependencies?: number[];
 }
 
 export type KeyValues<T> = [T, T][];
@@ -133,9 +135,14 @@ export enum ServiceActionTypes {
 	DoTransaction,
 	VisualizeResponse,
 	AppendResponse,
+
+	// Text Docs
 	OpenTextDocument,
 	TextDocumentChanged,
 	TextDocumentClosed,
+
+	// Sandboxes
+	PreviewInSandbox,
 };
 
 interface GetAllProtocolsAction {
@@ -150,7 +157,7 @@ interface GetNewRequest {
 
 interface HandleVisualizationChangeAction {
 	type: ServiceActionTypes.HandleVisualizationChange;
-	params: [IVisualizationItem, ITransaction]
+	params: [IVisualizationItem<any>, ITransaction]
 }
 
 interface DoTransactionAction {
@@ -191,6 +198,11 @@ interface TextDocumentClosedAction {
 	params: [number],
 }
 
+interface PreviewInSandboxAction {
+	type: ServiceActionTypes.PreviewInSandbox,
+	params: [string]
+}
+
 export type ServiceAction = (
 	GetAllProtocolsAction
 	| GetNewRequest
@@ -201,6 +213,7 @@ export type ServiceAction = (
 	| OpenTextDocumentAction
 	| TextDocumentChangedAction
 	| TextDocumentClosedAction
+	| PreviewInSandboxAction
 );
 
 export interface IServiceCall {

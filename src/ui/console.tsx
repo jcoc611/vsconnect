@@ -1,3 +1,5 @@
+'use strict';
+
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
@@ -17,7 +19,8 @@ state.getAllProtocols().then( (protocols) => {
 				sendCurrentRequest={ state.sendCurrentRequest.bind(state) }
 				setProtocol={ state.setProtocol.bind(state) }
 				updateUI={ state.updateUI.bind(state) }
-				openTextDocument={ state.openTextDocument.bind(state) } />,
+				openTextDocument={ state.openTextDocument.bind(state) }
+				getCommandPreview={ state.getCommandPreview.bind(state) } />,
 			document.getElementById("content-wrapper")
 		);
 		window.scrollTo(0,document.body.scrollHeight);

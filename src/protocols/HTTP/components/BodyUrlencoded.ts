@@ -1,6 +1,6 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext, BytesValue } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent, setKeyValueComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, setKeyValueComponent, hasKeyValueComponent } from "../../../utils/transactionTools";
 
 export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<string>> {
 	defaultValue(): KeyValues<string> {
@@ -9,12 +9,13 @@ export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<stri
 
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		let valLength = this.getValueFromTransaction(t, context).length;
+		let isUrlEncoded = hasKeyValueComponent(t, 'headers', 'Content-Type', 'application/x-www-form-urlencoded');
 		return {
 			type: UITypes.KeyValues,
 			name: 'body',
 			subName: 'x-www-form-urlencoded',
 			location: 'extra',
-			count: (valLength > 0)? String(valLength) : undefined,
+			count: (isUrlEncoded)? `${valLength} items` : undefined,
 		}
 	}
 
@@ -24,7 +25,7 @@ export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<stri
 
 	getTransactionFromValue(valueNew: KeyValues<string>, tCurrent: ITransaction): ITransaction {
 		let currentVal = getComponent<BytesValue>(tCurrent, 'body');
-		if (currentVal.type !== 'string')
+		if (currentVal.type !== 'string' && currentVal.type !== 'empty')
 			return tCurrent;
 
 		let newStr: string = this.serializeQuery(valueNew);

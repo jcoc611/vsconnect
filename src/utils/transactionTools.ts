@@ -30,6 +30,12 @@ export function setComponents(t: ITransaction, values: { [name: string]: any }):
 	});
 }
 
+export function deleteComponent(t: ITransaction, name: string): ITransaction {
+	let components: { [name: string]: any } = Object.assign({}, t.components);
+	delete components[name];
+	return Object.assign({}, t, { components });
+}
+
 // Key Value Components
 export function getKeyValueComponent<T>(t: ITransaction, nameComponent: string, nameKey: T, defaultValue?: T): T {
 	let componentValue = getComponent<KeyValues<T>>(t, nameComponent);
@@ -44,6 +50,17 @@ export function getKeyValueComponent<T>(t: ITransaction, nameComponent: string, 
 	}
 
 	return defaultValue;
+}
+
+export function hasKeyValueComponent(t: ITransaction, nameComponent: string, nameKey: any, value?: any): boolean {
+	let componentValue = getComponent<KeyValues<any>>(t, nameComponent);
+	for (let [keyCur, valueCur] of componentValue) {
+		if (keyCur === nameKey && (value === valueCur || value === undefined)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 export function getKeyValueComponents<T>(t: ITransaction, nameComponent: string, nameKey: T): T[] {

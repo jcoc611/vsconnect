@@ -1,98 +1,53 @@
 import * as React from 'react';
-import { KeyValues } from '../../../interfaces';
+import { KeyValues, IUserInterface, UITypes } from '../../../interfaces';
 import { AbstractItem } from './AbstractItem';
+import { TableEdit } from './TableEdit';
+
+type TableEditOnChange = (valueNew: any[][], overrideItem?: boolean, valueFunctionNew?: any) => void;
 
 export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
-	triggerChange(newValue: KeyValues<string>) {
-		if (this.props.onChange && !this.props.readOnly) {
-			this.props.onChange(newValue);
-		}
-	}
-
-	updateKey(index: number, newKey: string) {
-		const { value } = this.props;
-		let newTuples: KeyValues<string> = [];
-
-		for (let i = 0; i < value.length; i++) {
-			if (index === i) {
-				if (newKey !== '' || value[i][1] !== '') {
-					newTuples.push([ newKey, value[i][1] ]);
-				}
-			} else {
-				newTuples.push(value[i]);
-			}
-		}
-
-		if (index === value.length && newKey !== '') {
-			newTuples.push([ newKey, '' ]);
-		}
-
-		this.triggerChange(newTuples);
-	}
-
-	updateValue(index: number, newValue: string) {
-		const { value } = this.props;
-		let newTuples: KeyValues<string> = [];
-
-		for (let i = 0; i < value.length; i++) {
-			if (index === i) {
-				if (value[i][0] !== '' || newValue !== '') {
-					newTuples.push([ value[i][0], newValue ]);
-				}
-			} else {
-				newTuples.push(value[i]);
-			}
-		}
-
-		if (index === value.length && newValue !== '') {
-			newTuples.push([ '', newValue ]);
-		}
-
-		this.triggerChange(newTuples);
-	}
-
-	renderRow(index: number, [key, value]: [string, string]) {
-		let keyWidth: string = Math.max(Math.min(key.length + 2, 150), 20) + 'ch';
-		let valueWidth: string = Math.max(Math.min(value.length + 2, 150), 20) + 'ch';
-		return <tr key={index}>
-			<td><input type="text" placeholder="Name" value={key} readOnly={this.props.readOnly}
-				style={({ width: keyWidth })}
-				onContextMenu={this.openContextMenu}
-				onChange={(e) => this.updateKey(index, e.target.value)} /></td>
-			<td><input type="text" placeholder="Value" value={value} readOnly={this.props.readOnly}
-				style={({ width: valueWidth })}
-				onContextMenu={this.openContextMenu}
-				onChange={(e) => this.updateValue(index, e.target.value)} /></td>
-		</tr>;
-	}
-
 	render() {
-		const { value, readOnly } = this.props;
-		let content: JSX.Element[] = [];
+		const {
+			getCommandPreview, onChange, onChangeCommand, openTextDocument,
 
-		if (readOnly && value.length == 0)
-			return <div className="kvedit">No items</div>;
+			name, value, valueFunction, location,
 
-		for (let i = 0; i < value.length; i++) {
-			content.push( this.renderRow(i, value[i]) );
-		}
+			readOnly, allowedValues, defaultValue, /*components,*/ inline,
+		} = this.props;
 
-		if (!readOnly) {
-			content.push( this.renderRow(value.length, ['', '']) );
-		}
+		let components: IUserInterface[] = [
+			{
+				location,
+				type: UITypes.String,
+				name: 'Name',
+				defaultValue: '',
+				// shortDescription?: string;
+				// allowedValues?: any[];
+			},
+			{
+				location,
+				type: UITypes.String,
+				name: 'Value',
+				defaultValue: '',
+				// shortDescription?: string;
+				// allowedValues?: any[];
+			}
+		];
+		return <TableEdit
+			getCommandPreview={getCommandPreview}
+			onChange={onChange as TableEditOnChange}
+			onChangeCommand={onChangeCommand}
+			openTextDocument={openTextDocument}
 
-		return <div className="kvedit">
-			<table>
-				<thead>
-					<tr>
-						<td>Name</td>
-						<td>Value</td>
-					</tr>
-				</thead>
-				<tbody>
-					{content}
-				</tbody>
-			</table>
-		</div>;
+			name={name}
+			value={value}
+			valueFunction={valueFunction}
+			location={location}
+
+			readOnly={readOnly}
+			allowedValues={allowedValues}
+			defaultValue={defaultValue}
+			components={components}
+			inline={inline} />
 	}
 }

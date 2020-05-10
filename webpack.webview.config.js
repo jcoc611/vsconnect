@@ -5,6 +5,7 @@ module.exports = {
 		filename: 'bundle-webview.js',
 		path: path.resolve(__dirname, 'dist')
 	},
+	devtool: 'source-map',
 	resolve: {
 		extensions: [ '.tsx', '.ts', '.js' ]
 	},

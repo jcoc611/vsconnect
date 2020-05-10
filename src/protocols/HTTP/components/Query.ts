@@ -3,17 +3,12 @@ import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
 export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
-	private uiName: string;
-	private componentName: string;
 	private isURI: boolean;
-	private uiSubName?: string;
 
-	constructor(uiName: string, componentName: string, isURI: boolean, uiSubName?: string) {
+	// 'query', 'path', true
+	constructor() {
 		super();
-		this.uiName = uiName;
-		this.componentName = componentName;
-		this.isURI = isURI;
-		this.uiSubName = uiSubName;
+		this.isURI = true;
 	}
 
 	defaultValue(): KeyValues<string> {
@@ -23,33 +18,36 @@ export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.KeyValues,
-			name: this.uiName,
-			subName: this.uiSubName,
+			name: 'query',
+			// subName: this.uiSubName,
 			location: 'extra',
 			count: String(this.getValueFromTransaction(t, context).length)
 		}
 	}
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
-		return context === 'outgoing' && hasComponent(t, this.componentName);
+		return context === 'outgoing' && hasComponent(t, 'path');
 	}
 
 	getTransactionFromValue(valueNew: KeyValues<string>, tCurrent: ITransaction): ITransaction {
-		let currentStr = getComponent<string>(tCurrent, this.componentName);
+		let currentStr = getComponent<string>(tCurrent, 'path');
 		let newStr: string;
 		if (this.isURI) {
 			let queryIndex = currentStr.indexOf('?');
 			let rootPath = (queryIndex >= 0) ? currentStr.substr(0, queryIndex) : currentStr;
+			if (rootPath === '') {
+				rootPath = '/';
+			}
 			newStr = rootPath + '?' + this.serializeQuery(valueNew);
 		} else {
 			newStr = this.serializeQuery(valueNew);
 		}
 
-		return setComponent(tCurrent, this.componentName, newStr);
+		return setComponent(tCurrent, 'path', newStr);
 	}
 
 	getValueFromTransaction(tNew: ITransaction, context: IContext): KeyValues<string> {
-		return this.parseQuery( getComponent(tNew, this.componentName) );
+		return this.parseQuery( getComponent(tNew, 'path') );
 	}
 
 	private parseQuery(endpoint: string): KeyValues<string> {
@@ -84,7 +82,7 @@ export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
 	}
 
 	private serializeQuery(values: KeyValues<string>): string {
-		return values.map( ([k, v]) => (
+		return values.filter(([k, v]) => k !== '' || v !== '').map( ([k, v]) => (
 			encodeURIComponent(k) + ( (v !== '')? '=' + encodeURIComponent(v): '')
 		) ).join('&');
 	}

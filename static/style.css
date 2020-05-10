@@ -73,25 +73,6 @@ textarea {
 	background: transparent;
 }
 
-.bytesStringInput .bytes-bottomBar {
-	background-color: var(--vscode-editorGroupHeader-tabsBackground);
-	margin: 0;
-}
-
-.bytesStringInput .bytes-bottomBar button {
-	background: transparent;
-	font-size: 0.8em;
-	font-weight: lighter;
-}
-
-.bytesStringInput .bytes-bottomBar button:hover {
-	background: var(--vscode-tab-activeBackground);
-}
-
-.bytesStringInput {
-	line-height: 0;
-}
-
 .optionsLine button {
 	background: var(--vscode-tab-inactiveBackground);
 	color: var(--vscode-tab-inactiveForeground);
@@ -104,12 +85,6 @@ textarea {
 
 .optionsLine button:hover {
 	background: var(--vscode-tab-hoverBackground);
-}
-
-.response .optionsLine button {
-	/* border: 1px solid var(--vscode-tab-border); */
-	background: var(--vscode-tab-inactiveBackground);
-	color: var(--vscode-tab-inactiveForeground);
 }
 
 .optionsLine button.selected {
@@ -159,8 +134,7 @@ textarea {
 	background: var(--vscode-editorGroupHeader-tabsBackground);
 	border: 1px solid var(--vscode-titleBar-inactiveBackground);
 	border-radius: 2px;
-	padding: 6px 5px 3px;
-	margin-right: 5px;
+	padding: 6px 25px 3px 5px;
 }
 
 .request .consoleLine span.stringInput {
@@ -183,20 +157,6 @@ textarea {
 .consoleLine button {
 	padding: 5px 8px;
 	vertical-align: bottom;
-}
-
-.request .expansionToggle, .response .expansionToggle {
-	color: var(--vscode-editorLineNumber-foreground);
-	display: inline-block;
-	margin-right: 5px;
-	border-radius: 25px;
-	text-align: center;
-	vertical-align: text-bottom;
-	font-size: 1em;
-	padding: 1px 0px 3px 1px !important;
-	width: 18px;
-	cursor: pointer;
-	line-height: 22px;
 }
 
 .optionsLine {
@@ -279,7 +239,7 @@ textarea {
 }
 
 .response.is-success .wrapper {
-	border-left: 5px solid var(--vscode-terminal-ansiBrightGreen);
+	border-left: 5px solid var(--vscode-terminal-ansiGreen);
 }
 
 .response.is-error .wrapper {
@@ -314,6 +274,7 @@ textarea {
 	width: 50px;
 	line-height: 22px;
 	font-size: 0.9em;
+	flex-shrink: 0;
 }
 
 .request, .response {
@@ -327,6 +288,22 @@ textarea {
 .request .prompt, .response .prompt {
 	width: 15px;
 	line-height: 22px;
+	flex-shrink: 0;
+}
+
+.request .expansionToggle, .response .expansionToggle {
+	color: var(--vscode-editorLineNumber-foreground);
+	display: inline-block;
+	margin-right: 5px;
+	border-radius: 25px;
+	text-align: center;
+	vertical-align: text-bottom;
+	font-size: 1em;
+	padding: 1px 0px 3px 1px !important;
+	width: 18px;
+	cursor: pointer;
+	line-height: 22px;
+	flex-shrink: 0;
 }
 
 .is-current .prompt {
@@ -471,33 +448,67 @@ textarea {
 	min-width: 20px;
 }
 
-/** Key Value Edit */
-.kvedit thead {
+/** Bytes string input */
+.bytesStringInput {
+	line-height: 0;
+}
+
+.bytesStringInput .bytes-bottomBar {
+	background-color: var(--vscode-editorGroupHeader-tabsBackground);
+	margin: 0;
+}
+
+.bytesStringInput .bytes-bottomBar button {
+	background: transparent;
+	font-size: 0.8em;
+	font-weight: lighter;
+	color: var(--vscode-tab-inactiveForeground);
+}
+
+.bytesStringInput .bytes-bottomBar button:hover {
+	background: var(--vscode-tab-activeBackground);
+	color: var(--vscode-tab-activeForeground);
+}
+
+/** Table Edit */
+.tableEdit thead {
 	background: var(--vscode-editorGroupHeader-tabsBackground);
 	font-weight: bold;
 }
 
-.kvedit thead td {
+.tableEdit thead td {
 	padding: 5px;
 }
 
-.kvedit tbody td input {
-	width: 100%;
-	border: 0;
-	background: var(--vscode-editor-background);
-}
-
-.kvedit td {
+.tableEdit td {
 	border: 1px solid var(--vscode-titleBar-inactiveBackground);
 	padding-right: 5px;
 	padding-left: 5px;
 }
 
-.kvedit table {
+.tableEdit table {
 	border-collapse: collapse;
 	border-spacing: 1px;
 }
 
+.tableEdit .tableEdit-deleteRow button {
+	background: transparent;
+	font-size: 0.8em;
+	cursor: pointer;
+	color: var(--vscode-titleBar-inactiveForeground);
+}
+
+.tableEdit tr:last-child .tableEdit-deleteRow button {
+	visibility: hidden;
+}
+
+.tableEdit tr:hover .tableEdit-deleteRow button {
+	color: var(--vscode-editor-foreground);
+}
+
+.tableEdit tr:hover .tableEdit-deleteRow button:hover {
+	color: var(--vscode-terminal-ansiBrightBlue);
+}
 
 /** One of many */
 .oneOfMany-options {
@@ -519,7 +530,7 @@ div.form .form-item {
 	margin: 5px;
 }
 
-div.form .form-item > span {
+div.form .form-item > span.form-item-label {
 	display: inline-block;
 	margin-right: 5px;
 	min-width: 150px;
@@ -551,6 +562,7 @@ div.form .form-item > span {
 
 #contextmenu-wrapper .menu-item:hover {
 	background-color: var(--vscode-menu-selectionBackground);
+	color: var(--vscode-menu-selectionForeground);
 }
 
 /** inline */
@@ -567,4 +579,82 @@ div.form .form-item > span {
 
 .optionContent .inline .fileInput label {
 	padding: 0px 5px;
+}
+
+/** scripting */
+.stringInput-wrapper {
+	position: relative;
+	margin-right: 5px;
+	line-height: 1.8;
+}
+
+.stringInput-wrapper input {
+	padding-right: 25px;
+}
+
+.stringInput-wrapper span.stringInput {
+	word-break: break-all;
+	padding: 2px;
+	display: inline-block;
+}
+
+.stringInput-wrapper.inline {
+	margin-right: 0px;
+	line-height: 1.5;
+}
+
+.stringInput-wrapper.inline input {
+	width: 100%;
+	border: 0;
+	background: var(--vscode-editor-background);
+}
+
+.stringInput-wrapper .stringInput-function, .stringInput-wrapper .stringInput-function:focus {
+	/* box-sizing: border-box; */
+	border-bottom-left-radius: 0px !important;
+	border-bottom-right-radius: 0px !important;
+	border-bottom: 2px solid var(--vscode-statusBar-background) !important;
+}
+
+.stringInput-wrapper .stringInput-code {
+	position: absolute;
+	margin-left: -14px;
+	margin-top: 1px;
+	cursor: pointer;
+	user-select: none;
+	opacity: 0.6;
+}
+
+.stringInput-wrapper .stringInput-code:hover {
+	opacity: 1;
+}
+
+.stringInput-wrapper .stringInput-code.active {
+	font-weight: 900;
+	color: var(--vscode-terminal-ansiBrightBlue);
+	opacity: 1;
+}
+
+.stringInput-wrapper .stringInput-preview {
+	background: var(--vscode-statusBar-background);
+	color: var(--vscode-statusBar-foreground);
+	display: inline-block;
+	min-height: 18px;
+	position: absolute;
+	margin-top: 25px;
+	margin-left: -100%;
+	width: 100%;
+	z-index: 2;
+	line-height: 1;
+	padding: 4px 2px 5px 5px;
+	box-sizing: border-box;
+	font-size: 0.9em;
+	line-height: 0.9;
+}
+
+.stringInput-wrapper .stringInput-preview span {
+	display: inline-block;
+	margin-right: 5px;
+	opacity: 0.7;
+	font-size: 0.8em;
 }

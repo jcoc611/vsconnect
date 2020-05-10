@@ -67,7 +67,7 @@ export class HTTP extends ProtocolHandler {
 						// TODO versions, cipher suites
 					],
 				},
-				new QueryComponent('query', 'path', true),
+				new QueryComponent(),
 				new BodyUrlencodedComponent(),
 				new BodyMultipartComponent(),
 				{

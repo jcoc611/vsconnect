@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ServiceAction, IServiceCall, IServiceResult, OpenTextDocumentOptions } from './interfaces';
@@ -15,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// Make sure we register a serializer in activation event
 		vscode.window.registerWebviewPanelSerializer(VSConnectPanel.viewType, {
 			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+				// TODO: restore sandbox state here
 				VSConnectPanel.revive(webviewPanel, context.extensionPath);
 			}
 		});
@@ -33,6 +35,9 @@ class VSConnectPanel {
 	private readonly _extensionPath: string;
 	private _disposables: vscode.Disposable[] = [];
 	private services: Services;
+
+	// private scriptSrc: string;
+	// private stylesSrc: string;
 
 	public static createOrShow(extensionPath: string) {
 		const column = vscode.window.activeTextEditor
@@ -66,13 +71,25 @@ class VSConnectPanel {
 	}
 
 	public static revive(panel: vscode.WebviewPanel, extensionPath: string) {
-		VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
+		if (VSConnectPanel.currentPanel === undefined) {
+			VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
+		}
 		panel.webview.html = VSConnectPanel.currentPanel._getHtmlForWebview(panel.webview);
 	}
 
 	private constructor(panel: vscode.WebviewPanel, extensionPath: string) {
 		this._panel = panel;
 		this._extensionPath = extensionPath;
+
+		// this.scriptSrc = fs.readFileSync(
+		// 	path.join(this._extensionPath, 'dist', 'bundle-webview.js'),
+		// 	{ encoding: 'utf8' }
+		// );
+
+		// this.stylesSrc = fs.readFileSync(
+		// 	path.join(this._extensionPath, 'static', 'style.css'),
+		// 	{ encoding: 'utf8' }
+		// );
 
 		// Set the webview's initial html content
 		// this._update();

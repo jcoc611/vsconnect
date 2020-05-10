@@ -2,7 +2,7 @@
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent, getBinaryComponentValue, getBinaryComponentString } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, getBinaryComponentValue, getBinaryComponentString, deleteComponent } from "../../../utils/transactionTools";
 import { OAuth1, OAuth1Request, OAuth1Token } from "../utils/OAuth1";
 
 export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
@@ -40,7 +40,7 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 					location: 'extra',
 				}
 			],
-			count: (value[0] !== '' || value[1] !== '')? 'OAuth 1.0': undefined,
+			count: (value.some((valPart) => valPart !== ''))? 'OAuth 1.0': undefined,
 		}
 	}
 
@@ -49,8 +49,8 @@ export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
 	}
 
 	getTransactionFromValue(valueNew: string[], tCurrent: ITransaction): ITransaction {
-		if (valueNew.length < 4 || (valueNew[0] === '' && valueNew[1] === ''))
-			return tCurrent;
+		if (valueNew.length < 4 || !valueNew.some((valPart) => valPart !== ''))
+			return deleteComponent(tCurrent, 'extra:oauth-1.0');
 
 		let newTransaction = setComponent(tCurrent, 'extra:oauth-1.0', valueNew);
 

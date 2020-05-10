@@ -1,14 +1,16 @@
 import * as React from 'react';
-import * as classNames from 'classnames';
-import { IVisualizationItem, IUserInterface, OpenTextDocumentOptions } from '../../../interfaces';
+import { IVisualizationItem, IUserInterface, OpenTextDocumentOptions, BytesValue } from '../../../interfaces';
 import { ContextMenuContent, ContextMenuEvent, ContextMenuItem } from '../ContextMenu';
 
 export interface AbstractItemProps<T, TT = T> {
-	onChange?: (newValue: TT, overrideItem?: boolean) => void;
-	openTextDocument?: (docOptions: OpenTextDocumentOptions, viz?: IVisualizationItem) => void;
+	onChange?: (valueNew: TT, overrideItem?: boolean, valueFunctionNew?: any) => void;
+	onChangeCommand?: (command: string) => void;
+	openTextDocument?: (docOptions: OpenTextDocumentOptions, viz?: IVisualizationItem<BytesValue>) => void;
+	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
 
 	name: string;
 	value: T;
+	valueFunction?: any;
 	location: IUserInterface['location'];
 
 	readOnly?: boolean;
@@ -41,7 +43,6 @@ export abstract class AbstractItem<T, S={}, TT = T> extends React.Component<Abst
 	}
 
 	openContextMenu = (event: React.MouseEvent) => {
-		console.log('item contextmenu', event);
 		let content = this.getContextMenuContent();
 		if (content !== null) {
 			const { pageX, pageY } = event;

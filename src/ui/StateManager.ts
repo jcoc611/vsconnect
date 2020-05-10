@@ -1,9 +1,9 @@
-// import { WebViewServices } from "./utils/WebViewServices";
-import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes } from "../interfaces";
-import { DelegatedPromise } from "../utils/DelegatedPromise";
-import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
+'use strict';
 
-// type History = IVisualization[];
+import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes, BytesValue } from "../interfaces";
+import { DelegatedPromise, PromiseCancelledError } from "../utils/DelegatedPromise";
+import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
+import { DelegatedPromiseStore } from "../utils/DelegatedPromiseStore";
 
 export class StateManager {
 	private static instance : StateManager | null;
@@ -25,13 +25,15 @@ export class StateManager {
 	private resCount: number = 0;
 
 	private lastProtocol: string = '';
+	private protocols?: string[];
 
 	private vscode: any;
-	private pendingPromises: Map< number, DelegatedPromise<any> > = new Map();
-	private pendingPromiseCount: number = 0;
+	private promiseStore: DelegatedPromiseStore = new DelegatedPromiseStore();
+	private uiHandlerPromiseId: { [handlerId: number]: number } = {};
+
 	private historyWalkCurrent: number = -1;
 
-	private trackedTextDocuments: { [key: number]: IVisualizationItem } = {};
+	private trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> } = {};
 
 	private contextMenuContent?: ContextMenuContent;
 	private contextMenuLocation?: { top: number, left: number };
@@ -44,8 +46,8 @@ export class StateManager {
 		window.addEventListener( 'message', (event) => {
 			const message: IServiceMessage = event.data; // The json data that the extension sent
 			if (message.type === 'result') {
-				if ( this.pendingPromises.has(message.promiseId) ) {
-					this.pendingPromises.get(message.promiseId)!.fulfill(message.result);
+				if (this.promiseStore.has(message.promiseId)) {
+					this.promiseStore.fulfill(message.promiseId, message.result);
 				} else {
 					console.error(`Dropped response with ID ${message.promiseId}, promise not found.`);
 				}
@@ -54,7 +56,7 @@ export class StateManager {
 					this.addResponse(message.action.params[0]);
 				} else if (message.action.type === ServiceActionTypes.TextDocumentChanged) {
 					const [ trackedDocId, contentNew ] = message.action.params;
-					let viz: IVisualizationItem = this.trackedTextDocuments[trackedDocId];
+					let viz: IVisualizationItem<BytesValue> = this.trackedTextDocuments[trackedDocId];
 					viz.value = contentNew;
 					this.updateUI(viz, this.currentRequest!.transaction, true);
 				} else if (message.action.type === ServiceActionTypes.TextDocumentClosed) {
@@ -100,7 +102,8 @@ export class StateManager {
 
 	toJSON() {
 		const {
-			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount, lastProtocol,
+			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount,
+			lastProtocol, protocols,
 			trackedTextDocuments
 		} = this;
 
@@ -108,7 +111,7 @@ export class StateManager {
 			history, currentRequest,
 			reqInHistory: Array.from(reqInHistory.entries()),
 			resInHistory: Array.from(resInHistory.entries()),
-			reqCount, resCount, lastProtocol,
+			reqCount, resCount, lastProtocol, protocols,
 			trackedTextDocuments
 		}));
 	}
@@ -122,11 +125,18 @@ export class StateManager {
 		callback( this.getHistory() );
 	}
 
-	getAllProtocols(): Promise<string[]> {
-		return this.remoteCall({
+	async getAllProtocols(): Promise<string[]> {
+		if (this.protocols !== undefined) {
+			return this.protocols;
+		}
+
+		let protocols: string[] = await this.remoteCall({
 			type: ServiceActionTypes.GetAllProtocols,
 			params: []
 		});
+		this.protocols = protocols;
+
+		return protocols;
 	}
 
 	getCurrentRequest(): IVisualization {
@@ -162,34 +172,70 @@ export class StateManager {
 		this.triggerChange();
 	}
 
-	async updateUI(viz: IVisualizationItem, currentTransaction: ITransaction, fromTextDocument: boolean = false) {
+	async updateUI(
+		vizItemChanged: IVisualizationItem<any>,
+		currentTransaction: ITransaction,
+		fromTextDocument: boolean = false
+	): Promise<void> {
 		if ( this.currentRequest === undefined ) {
 			throw new Error('Cannot update UI if there is no current request');
 		}
 
-		this.currentRequest = await this.remoteCall({
+		if (vizItemChanged.handlerId === -1) {
+			throw new Error('Ups should not do this');
+		}
+
+		// Promise
+		if (this.uiHandlerPromiseId[vizItemChanged.handlerId] !== undefined) {
+			this.promiseStore.cancel(this.uiHandlerPromiseId[vizItemChanged.handlerId]);
+		}
+		let vizNewPromise = this.remoteCall({
 			type: ServiceActionTypes.HandleVisualizationChange,
-			params: [viz, currentTransaction]
+			params: [vizItemChanged, currentTransaction]
 		});
+		this.uiHandlerPromiseId[vizItemChanged.handlerId] = vizNewPromise.id;
+		let vizNew;
+		try {
+			vizNew = await vizNewPromise;
+		} catch (e) {
+			if (e instanceof PromiseCancelledError) {
+				return;
+			} else {
+				throw e;
+			}
+		}
+		delete this.uiHandlerPromiseId[vizItemChanged.handlerId];
+		// Promise end
+
+		this.currentRequest = vizNew;
+		// TODO: Scripting
+		// this.currentRequest = this.mergeVizChange(this.currentRequest, vizNew, vizItemChanged);
 		this.triggerChange();
 
-		if (viz.ui.type === UITypes.BytesString && !fromTextDocument) {
-			let docId = this.isTrackingDoc(viz);
+		if (vizItemChanged.ui.type === UITypes.BytesString && !fromTextDocument) {
+			let docId = this.isTrackingDoc(vizItemChanged);
 			if (docId >= 0) {
-				this.remoteCall({
+				this.remoteCall(<ServiceAction> {
 					type: ServiceActionTypes.TextDocumentChanged,
-					params: [docId, viz.value]
-				} as ServiceAction);
+					params: [docId, vizItemChanged.value]
+				});
 			}
 		}
 	}
 
-	async openTextDocument(textDoc: OpenTextDocumentOptions, viz: IVisualizationItem) {
+	async openTextDocument(textDoc: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) {
 		let textDocId: number = await this.remoteCall({
 			type: ServiceActionTypes.OpenTextDocument,
 			params: [textDoc]
 		});
 		this.trackedTextDocuments[textDocId] = viz;
+	}
+
+	async getCommandPreview(command: string): Promise<IVisualizationItem<any> | null> {
+		return await this.remoteCall({
+			type: ServiceActionTypes.PreviewInSandbox,
+			params: [command]
+		});
 	}
 
 	// context menus
@@ -273,19 +319,16 @@ export class StateManager {
 	// 	...
 	// }
 
-	private async remoteCall(action: ServiceAction) {
-		let promiseId = this.pendingPromiseCount++;
-		var newPromise = new DelegatedPromise<any>();
+	private remoteCall(action: ServiceAction): DelegatedPromise<any> {
+		let newPromise = this.promiseStore.create();
 
 		let serviceCall: IServiceCall = {
 			type: 'call',
 			action,
-			promiseId
+			promiseId: newPromise.id,
 		};
-
 		this.vscode.postMessage( serviceCall );
 
-		this.pendingPromises.set( promiseId, newPromise );
 		return newPromise;
 	}
 
@@ -297,7 +340,7 @@ export class StateManager {
 		}
 	}
 
-	private isTrackingDoc(viz: IVisualizationItem): number {
+	private isTrackingDoc(viz: IVisualizationItem<any>): number {
 		for (let docId of Object.keys(this.trackedTextDocuments)) {
 			let vizTracked = this.trackedTextDocuments[Number(docId)];
 			if (vizTracked.handlerId == viz.handlerId && vizTracked.ui.name === viz.ui.name)
@@ -318,6 +361,7 @@ export class StateManager {
 			this.reqCount = prevState.reqCount;
 			this.resCount = prevState.resCount;
 			this.lastProtocol = prevState.lastProtocol;
+			this.protocols = prevState.protocols;
 			this.trackedTextDocuments = prevState.trackedTextDocuments;
 
 			this.triggerChange();
@@ -337,5 +381,83 @@ export class StateManager {
 			{}, this.history[this.reqInHistory.get(reqIndex)!]
 		);
 		this.triggerChange();
+	}
+
+	private mergeVizChange(
+		vizOld: IVisualization,
+		vizNew: IVisualization,
+		vizItem: IVisualizationItem<any>
+	): IVisualization {
+		let vizItemsMerged = this.mergeVizItemsChange(vizOld.items, vizNew.items, vizItem);
+		vizNew.items = vizItemsMerged;
+		return vizNew;
+	}
+
+	private mergeVizItemsChange(
+		vizOld: IVisualizationItem<any>[],
+		vizNew: IVisualizationItem<any>[],
+		vizItemChanged: IVisualizationItem<any>
+	): IVisualizationItem<any>[] {
+		// in place for vizNew
+		// The issue is that the vizOld goes through a roundtrip of [vizItem, t] -> tNew -> vizNew
+		// on the services side (node), and in the process loses the valueFunction data, because it
+		// isn't stored on the transaction.
+		// Kind of a hack, but is the easiest way to preserve valueFunction data since it's not
+		// desirable to put it on the transaction.
+		let iOld = 0, iNew = 0;
+		while (iOld < vizOld.length && iNew < vizNew.length) {
+			let itemOld = vizOld[iOld];
+			let itemNew = vizNew[iNew];
+			if (itemOld.handlerId == itemNew.handlerId) {
+				if (itemNew.handlerId == vizItemChanged.handlerId) {
+					itemNew.valueFunction = vizItemChanged.valueFunction;
+				} else if (itemNew.ui.type === UITypes.OneOfMany) {
+					// OneOfMany item has value of type IVisualizationItem[]
+					itemNew.value = this.mergeVizItemsChange(itemOld.value, itemNew.value, vizItemChanged);
+				} else if (itemOld.valueFunction !== undefined && this.isEqualDeep(itemOld.value, itemNew.value)) {
+					itemNew.valueFunction = itemOld.valueFunction;
+				}
+				iOld++;
+				iNew++;
+			} else if (itemOld.handlerId < itemNew.handlerId) {
+				iOld++;
+			} else {
+				iNew++;
+			}
+		}
+
+		return vizNew;
+	}
+
+	private isEqualDeep(a: unknown, b: unknown): boolean {
+		if (typeof(a) === 'object' && typeof(b) === 'object') {
+			if (Array.isArray(a) && Array.isArray(b)) {
+				if (a.length !== b.length)
+					return false;
+
+				for (let i = 0; i < a.length; i++) {
+					if (!this.isEqualDeep(a[i], b[i])) {
+						return false;
+					}
+				}
+
+				return true;
+			} else if (a === null || b === null) {
+				return (a === b);
+			} else {
+				for (let key in a) {
+					if (!(key in b)) {
+						return false;
+					// @ts-ignore not sure why type checking is failing here
+					} else if (!this.isEqualDeep(a[key], b[key])) {
+						return false;
+					}
+				}
+
+				return true;
+			}
+		} else {
+			return (a === b);
+		}
 	}
 }
