@@ -1,65 +1,105 @@
+'use strict';
+
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ServiceAction, IServiceCall, IServiceResult, OpenTextDocumentOptions } from './interfaces';
+import { ServiceAction, IServiceCall, IServiceResult, OpenTextDocumentOptions, ConsoleViewState, ServiceActionTypes } from './interfaces';
 import { Services } from './Services';
 import { registerBuiltins } from './registerBuiltins';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('vsConnectClient.start', () => {
-			VSConnectPanel.createOrShow(context.extensionPath);
+			VSConnectPanel.create(context.extensionPath);
 		})
 	);
 
 	if (vscode.window.registerWebviewPanelSerializer) {
 		// Make sure we register a serializer in activation event
 		vscode.window.registerWebviewPanelSerializer(VSConnectPanel.viewType, {
-			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, stateEncoded: any) {
+				// TODO: modify state, recompute viz
 				// TODO: restore sandbox state here
-				VSConnectPanel.revive(webviewPanel, context.extensionPath);
+				let state: ConsoleViewState = JSON.parse(decodeURI(stateEncoded));
+				Services.GetInstance().restoreSandbox(state.webviewId, state.history);
+				VSConnectPanel.revive(webviewPanel, context.extensionPath, state.webviewId);
 			}
 		});
 	}
+
+	setupServices();
+}
+
+function setupServices() {
+	let services = Services.GetInstance();
+	let disposables: vscode.Disposable[] = [];
+
+	registerBuiltins(services);
+	services.on('document:open', (docOptions: OpenTextDocumentOptions) =>
+		vscode.workspace.openTextDocument({
+			language: docOptions.language,
+			content: docOptions.content,
+		}).then((textDocument) => {
+			if (docOptions.shouldSync) {
+				services.trackTextDocument(textDocument);
+			}
+			vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Beside, true);
+		})
+	);
+	services.on('document:change', (textDocument: vscode.TextDocument, valueNew: string) => {
+		for (let editor of vscode.window.visibleTextEditors) {
+			if (editor.document === textDocument) {
+				let firstLine = textDocument.lineAt(0);
+				let lastLine = textDocument.lineAt(textDocument.lineCount - 1);
+				let textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
+				editor.edit((editBuilder) => editBuilder.replace(textRange, valueNew));
+				break;
+			}
+		}
+	});
+	vscode.workspace.onDidChangeTextDocument(
+		(e) => services.textDocumentDidChange(e.document),
+		null,
+		disposables
+	);
+	vscode.workspace.onDidCloseTextDocument(
+		(docClosed) => services.textDocumentDidClose(docClosed),
+		null,
+		disposables
+	);
 }
 
 class VSConnectPanel {
-	/**
-	 * Track the currently panel. Only allow a single panel to exist at a time.
-	 */
-	public static currentPanel: VSConnectPanel | undefined;
-
 	public static readonly viewType = 'vsConnectClient';
+
+	private static editorCount: number = 1;
 
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionPath: string;
 	private _disposables: vscode.Disposable[] = [];
 	private services: Services;
+	private isDisposed: boolean = false;
+	private id: number;
 
 	// private scriptSrc: string;
 	// private stylesSrc: string;
 
-	public static createOrShow(extensionPath: string) {
-		const column = vscode.window.activeTextEditor
-			? vscode.window.activeTextEditor.viewColumn
-			: undefined;
-
-		// If we already have a panel, show it.
-		if (VSConnectPanel.currentPanel) {
-			VSConnectPanel.currentPanel._panel.reveal(column);
-			return;
-		}
+	public static create(extensionPath: string) {
+		const column: vscode.ViewColumn = (vscode.window.activeTextEditor !== undefined)
+			? vscode.window.activeTextEditor.viewColumn!
+			: vscode.ViewColumn.One;
 
 		// Otherwise, create a new panel.
+		let count: number = VSConnectPanel.editorCount++;
 		const panel = vscode.window.createWebviewPanel(
 			VSConnectPanel.viewType,
-			'VSConnect: Client',
-			column || vscode.ViewColumn.One,
+			`VSConnect: Client ${count}`,
+			column,
 			{
 				// Enable javascript in the webview
 				enableScripts: true,
 
-				// And restrict the webview to only loading content from our extension's `media` directory.
+				// And restrict the webview local fs paths
 				localResourceRoots: [
 					vscode.Uri.file(path.join(extensionPath, 'dist')),
 					vscode.Uri.file(path.join(extensionPath, 'static'))
@@ -67,32 +107,32 @@ class VSConnectPanel {
 			}
 		);
 
-		VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
+		return new VSConnectPanel(panel, extensionPath, count);
 	}
 
-	public static revive(panel: vscode.WebviewPanel, extensionPath: string) {
-		if (VSConnectPanel.currentPanel === undefined) {
-			VSConnectPanel.currentPanel = new VSConnectPanel(panel, extensionPath);
-		}
-		panel.webview.html = VSConnectPanel.currentPanel._getHtmlForWebview(panel.webview);
+	public static revive(panel: vscode.WebviewPanel, extensionPath: string, id: number) {
+		let panelHandler = new VSConnectPanel(panel, extensionPath, id);
+		panel.webview.html = panelHandler._getHtmlForWebview(panel.webview);
 	}
 
-	private constructor(panel: vscode.WebviewPanel, extensionPath: string) {
+	sendMessageToWebview = (action: ServiceAction, sourceId?: number): void => {
+		if (sourceId !== undefined && sourceId !== this.id)
+			return;
+
+		let svcCall: IServiceCall = {
+			type: 'call',
+			promiseId: -1, // TODO implement result handling if needed
+			action
+		};
+		this._panel.webview.postMessage(svcCall);
+	}
+
+	private constructor(panel: vscode.WebviewPanel, extensionPath: string, id: number) {
+		this.id = id;
 		this._panel = panel;
 		this._extensionPath = extensionPath;
 
-		// this.scriptSrc = fs.readFileSync(
-		// 	path.join(this._extensionPath, 'dist', 'bundle-webview.js'),
-		// 	{ encoding: 'utf8' }
-		// );
-
-		// this.stylesSrc = fs.readFileSync(
-		// 	path.join(this._extensionPath, 'static', 'style.css'),
-		// 	{ encoding: 'utf8' }
-		// );
-
 		// Set the webview's initial html content
-		// this._update();
 		this._panel.iconPath = vscode.Uri.file(path.join(extensionPath, 'static', 'VSConnectLogo.svg'));
 		this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
@@ -101,65 +141,27 @@ class VSConnectPanel {
 		this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
 		// Update the content based on view changes
-		this._panel.onDidChangeViewState(
-			e => {
-				if (this._panel.visible) {
-					// this._update();
-				}
-			},
-			null,
-			this._disposables
-		);
+		// this._panel.onDidChangeViewState(
+		// 	e => {
+		// 		if (this._panel.visible) {
+		// 			// this._update();
+		// 		}
+		// 	},
+		// 	null,
+		// 	this._disposables
+		// );
 
-		this.services = new Services();
-		registerBuiltins(this.services);
-		this.services.on('message', (action: ServiceAction) => {
-			let svcCall: IServiceCall = {
-				type: 'call',
-				promiseId: 0, // TODO implement result handling if needed
-				action
-			};
-			this._panel.webview.postMessage(svcCall);
-		});
-		this.services.on('document:open', (docOptions: OpenTextDocumentOptions) =>
-			vscode.workspace.openTextDocument({
-				language: docOptions.language,
-				content: docOptions.content,
-			}).then((textDocument) => {
-				if (docOptions.shouldSync) {
-					this.services.trackTextDocument(textDocument);
-				}
-				vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Beside, true);
-			})
-		);
-		this.services.on('document:change', (textDocument: vscode.TextDocument, valueNew: string) => {
-			for (let editor of vscode.window.visibleTextEditors) {
-				if (editor.document === textDocument) {
-					let firstLine = textDocument.lineAt(0);
-					let lastLine = textDocument.lineAt(textDocument.lineCount - 1);
-					let textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
-					editor.edit((editBuilder) => editBuilder.replace(textRange, valueNew));
-					break;
-				}
-			}
-		});
-		vscode.workspace.onDidChangeTextDocument(
-			(e) => this.services.textDocumentDidChange(e.document),
-			null,
-			this._disposables
-		);
-		vscode.workspace.onDidCloseTextDocument(
-			(docClosed) => this.services.textDocumentDidClose(docClosed),
-			null,
-			this._disposables
-		);
+		this.services = Services.GetInstance();
+
+		// Handle messages to the webview
+		this.services.on('message', this.sendMessageToWebview);
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
 			(message) => {
 				let call: IServiceCall = message;
-				this.services.process(call.action).then( (result: any) => {
-					if (result !== undefined) {
+				this.services.process(call.action, this.id).then( (result: any) => {
+					if (!this.isDisposed) {
 						let svcResult: IServiceResult = {
 							type: 'result',
 							promiseId: call.promiseId,
@@ -172,10 +174,22 @@ class VSConnectPanel {
 			null,
 			this._disposables
 		);
+
+		let svcReq: IServiceCall = {
+			type: 'call',
+			promiseId: -1,
+			action: {
+				type: ServiceActionTypes.SetWebviewId,
+				params: [id]
+			}
+		}
+		this._panel.webview.postMessage(svcReq);
 	}
 
 	public dispose() {
-		VSConnectPanel.currentPanel = undefined;
+		this.isDisposed = true;
+		this.services.off('message', this.sendMessageToWebview);
+		this.services.deleteSandbox(this.id);
 
 		// Clean up our resources
 		this._panel.dispose();
@@ -188,32 +202,7 @@ class VSConnectPanel {
 		}
 	}
 
-	private _update() {
-		// const webview = this._panel.webview;
-
-		// Vary the webview's content based on where it is located in the editor.
-		switch (this._panel.viewColumn) {
-			case vscode.ViewColumn.Two:
-				return;
-
-			case vscode.ViewColumn.Three:
-				return;
-
-			case vscode.ViewColumn.One:
-			default:
-				return;
-		}
-	}
-
 	private _getHtmlForWebview( webview: vscode.Webview ) {
-		// Local path to main script run in the webview
-		// const uiPathOnDisk = vscode.Uri.file(
-		// 	path.join(this._extensionPath, 'static', 'ui.html')
-		// );
-
-		// return fs.readFileSync( uiPathOnDisk.fsPath, { encoding: 'utf8' } )
-
-
 		// And the uri we use to load this script in the webview
 		const scriptPathOnDisk = vscode.Uri.file(
 			path.join(this._extensionPath, 'dist', 'bundle-webview.js')

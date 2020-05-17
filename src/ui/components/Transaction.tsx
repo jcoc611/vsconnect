@@ -1,15 +1,18 @@
+'use strict';
+
 import * as React from 'react';
+import * as classNames from 'classnames';
+
 import { IVisualization, IVisualizationItem, ITransaction, ITransactionState, UITypes, OpenTextDocumentOptions, BytesValue } from '../../interfaces';
 import { VisualizationItem } from './VisualizationItem';
 import { Dropdown } from './visualizationItems/Dropdown';
-import classNames = require('classnames');
 
 interface TransactionProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
-	updateUI: (viz: IVisualizationItem<any>, currentTransaction: ITransaction) => void;
+	updateUI: (vizItem: IVisualizationItem<any>, vizCurrent: IVisualization) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void;
-	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
 
 	allProtocols: string[];
 
@@ -21,8 +24,9 @@ interface TransactionProps {
 interface TransactionContentProps {
 	handleUIChange: (viz: IVisualizationItem<any>) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void;
-	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
 
+	visualization: IVisualization;
 	itemsExtra: IVisualizationItem<any>[];
 	readOnly: boolean;
 }
@@ -51,6 +55,9 @@ class TransactionContent extends React.Component<TransactionContentProps, Transa
 		stateOld: TransactionContentState
 	): TransactionContentState | null {
 		const { openTab } = stateOld;
+		if (openTab === 'debug')
+			return null;
+
 		for (let item of propsNew.itemsExtra) {
 			if (item.ui.name === openTab)
 				return null;
@@ -84,8 +91,8 @@ class TransactionContent extends React.Component<TransactionContentProps, Transa
 	render() {
 		const { openTab } = this.state;
 		const {
-			itemsExtra, readOnly,
-			handleUIChange, openTextDocument, getCommandPreview
+			visualization, itemsExtra, readOnly,
+			handleUIChange, openTextDocument, getFunctionPreview
 		} = this.props;
 
 		let optionContent: React.ReactNode;
@@ -98,7 +105,23 @@ class TransactionContent extends React.Component<TransactionContentProps, Transa
 					item={item} readOnly={readOnly}
 					onChange={handleUIChange}
 					openTextDocument={openTextDocument}
-					getCommandPreview={getCommandPreview} />;
+					getFunctionPreview={getFunctionPreview} />;
+			}
+		}
+
+		if (process.env.NODE_ENV === 'development') {
+			let itemDebug: IVisualizationItem<any> = {
+				handlerId: -1,
+				ui: { name: 'debug', type: UITypes.Object, location: 'extra' },
+				value: visualization
+			};
+			optionsLine.push(this.renderExtraTab(itemDebug));
+			if (openTab === 'debug') {
+				optionContent = <VisualizationItem
+					item={itemDebug} readOnly={readOnly}
+					onChange={handleUIChange}
+					openTextDocument={openTextDocument}
+					getFunctionPreview={getFunctionPreview} />;
 			}
 		}
 
@@ -133,13 +156,13 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			visualization,
 			readOnly,
 			openTextDocument,
-			getCommandPreview
+			getFunctionPreview
 		} = this.props;
 
 		let itemElement = <VisualizationItem
 			item={item} readOnly={readOnly} onChange={this.handleUIChange}
 			openTextDocument={openTextDocument}
-			getCommandPreview={getCommandPreview} />;
+			getFunctionPreview={getFunctionPreview} />;
 		if (visualization.context === 'incoming') {
 			if (item.ui.type === UITypes.Boolean) {
 				return <span className='shortItem' key={item.ui.name}>
@@ -159,7 +182,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 	}
 
 	handleUIChange = (viz: IVisualizationItem<any>): void => {
-		this.props.updateUI(viz, this.props.visualization.transaction);
+		this.props.updateUI(viz, this.props.visualization);
 	}
 
 	renderShortTabPreview = (item: IVisualizationItem<any>): JSX.Element => (
@@ -173,7 +196,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		const { isExpanded } = this.state;
 		const {
 			visualization, index, readOnly, allProtocols,
-			setProtocol, sendCurrentRequest, openTextDocument, getCommandPreview
+			setProtocol, sendCurrentRequest, openTextDocument, getFunctionPreview
 		} = this.props;
 		const type = (visualization.context === 'incoming')? 'res': 'req';
 
@@ -185,7 +208,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 				location={'short'}
 				value={visualization.transaction.protocolId}
 				allowedValues={allProtocols} readOnly={readOnly} onChange={setProtocol}
-				getCommandPreview={getCommandPreview} />);
+				getFunctionPreview={getFunctionPreview} />);
 		} else {
 			short.push(<span className='protocol' key='Protocol'>
 				{visualization.transaction.protocolId}</span>);
@@ -223,9 +246,11 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			<div className='wrapper'>
 				<div className='consoleLine'>{short}</div>
 				{(isExpanded)?
-					<TransactionContent itemsExtra={itemsExtra} readOnly={readOnly}
+					<TransactionContent 
+						itemsExtra={itemsExtra} visualization={visualization}
+						readOnly={readOnly}
 						handleUIChange={this.handleUIChange}
-						getCommandPreview={getCommandPreview}
+						getFunctionPreview={getFunctionPreview}
 						openTextDocument={openTextDocument} />
 					: null
 				}

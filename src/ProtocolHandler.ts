@@ -7,7 +7,7 @@ export abstract class ProtocolHandler extends EventEmitter {
 	protected connections: any[] = [];
 
 	abstract initialize(params: any[]): Promise<boolean>;
-	abstract do( transaction: ITransaction ): void;
+	abstract do(transaction: ITransaction, sourceId?: number): void;
 
 	abstract getMetadata(): IProtocolMetadata;
 

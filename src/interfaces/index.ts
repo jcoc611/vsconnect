@@ -99,6 +99,7 @@ export interface IVisualizationItem<T> {
 	ui: IUserInterface;
 	value: T;
 	valueFunction?: T;
+	valuePreview?: any;
 }
 
 export interface IVisualization {
@@ -129,8 +130,11 @@ interface BytesFileValue {
 export type BytesValue = BytesStringValue | BytesFileValue | BytesEmptyValue;
 
 export enum ServiceActionTypes {
+	SetWebviewId,
+
 	GetAllProtocols,
 	GetNewRequest,
+	Revisualize,
 	HandleVisualizationChange,
 	DoTransaction,
 	VisualizeResponse,
@@ -143,21 +147,32 @@ export enum ServiceActionTypes {
 
 	// Sandboxes
 	PreviewInSandbox,
+	ClearSandbox,
 };
+
+interface SetWebviewIdAction {
+	type: ServiceActionTypes.SetWebviewId,
+	params: [number]
+}
 
 interface GetAllProtocolsAction {
 	type: ServiceActionTypes.GetAllProtocols;
 	params: []
 }
 
-interface GetNewRequest {
+interface GetNewRequestAction {
 	type: ServiceActionTypes.GetNewRequest;
 	params: [string]
 }
 
+interface RevisualizeAction {
+	type: ServiceActionTypes.Revisualize,
+	params: [IVisualization]
+}
+
 interface HandleVisualizationChangeAction {
 	type: ServiceActionTypes.HandleVisualizationChange;
-	params: [IVisualizationItem<any>, ITransaction]
+	params: [IVisualizationItem<any>, IVisualization]
 }
 
 interface DoTransactionAction {
@@ -200,12 +215,19 @@ interface TextDocumentClosedAction {
 
 interface PreviewInSandboxAction {
 	type: ServiceActionTypes.PreviewInSandbox,
-	params: [string]
+	params: [string],
+}
+
+interface ClearSandboxAction {
+	type: ServiceActionTypes.ClearSandbox,
+	params: [],
 }
 
 export type ServiceAction = (
-	GetAllProtocolsAction
-	| GetNewRequest
+	SetWebviewIdAction
+	| GetAllProtocolsAction
+	| GetNewRequestAction
+	| RevisualizeAction
 	| HandleVisualizationChangeAction
 	| DoTransactionAction
 	| VisualizeResponseAction
@@ -214,6 +236,7 @@ export type ServiceAction = (
 	| TextDocumentChangedAction
 	| TextDocumentClosedAction
 	| PreviewInSandboxAction
+	| ClearSandboxAction
 );
 
 export interface IServiceCall {
@@ -229,3 +252,17 @@ export interface IServiceResult {
 }
 
 export type IServiceMessage = IServiceCall | IServiceResult;
+
+// Webview interfaces
+export interface ConsoleViewState {
+	webviewId: number;
+	history: IVisualization[];
+	currentRequest: IVisualization;
+	reqInHistory: [number, number][];
+	resInHistory: [number, number][];
+	reqCount: number;
+	resCount: number;
+	lastProtocol: string;
+	protocols?: string[];
+	trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> };
+}

@@ -3,14 +3,15 @@ import { IVisualizationItem, IUserInterface, OpenTextDocumentOptions, BytesValue
 import { ContextMenuContent, ContextMenuEvent, ContextMenuItem } from '../ContextMenu';
 
 export interface AbstractItemProps<T, TT = T> {
-	onChange?: (valueNew: TT, overrideItem?: boolean, valueFunctionNew?: any) => void;
+	onChange?: (valueNew: TT, overrideItem?: boolean, valueFunctionNew?: any, valuePreviewNew?: any) => void;
 	onChangeCommand?: (command: string) => void;
 	openTextDocument?: (docOptions: OpenTextDocumentOptions, viz?: IVisualizationItem<BytesValue>) => void;
-	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	getFunctionPreview?: (command: string) => Promise<IVisualizationItem<any> | null>;
 
 	name: string;
 	value: T;
 	valueFunction?: any;
+	valuePreview?: any;
 	location: IUserInterface['location'];
 
 	readOnly?: boolean;
@@ -18,6 +19,7 @@ export interface AbstractItemProps<T, TT = T> {
 	defaultValue?: T;
 	components?: IUserInterface[];
 	inline?: boolean;
+	hasRecursed?: boolean;
 }
 
 export abstract class AbstractItem<T, S={}, TT = T> extends React.Component<AbstractItemProps<T, TT>, S> {

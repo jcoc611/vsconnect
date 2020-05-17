@@ -51,7 +51,12 @@ export class Sandbox {
 
 			case 'object':
 				valueRaw = JSON.parse(JSON.stringify(valueRaw));
-				uiType = UITypes.Object;
+				if (typeof(valueRaw) !== 'object') {
+					valueRaw = String(valueRaw);
+					uiType = UITypes.String;
+				} else {
+					uiType = UITypes.Object;
+				}
 				break;
 
 			case 'bigint':

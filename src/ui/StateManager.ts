@@ -1,6 +1,6 @@
 'use strict';
 
-import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes, BytesValue } from "../interfaces";
+import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes, BytesValue, ConsoleViewState } from "../interfaces";
 import { DelegatedPromise, PromiseCancelledError } from "../utils/DelegatedPromise";
 import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
 import { DelegatedPromiseStore } from "../utils/DelegatedPromiseStore";
@@ -14,6 +14,8 @@ export class StateManager {
 
 		return StateManager.instance;
 	}
+
+	private webviewId?: number;
 
 	changeListeners: Array<(newHistory: IVisualization[]) => void> = new Array();
 	private history: IVisualization[] = [];
@@ -38,6 +40,10 @@ export class StateManager {
 	private contextMenuContent?: ContextMenuContent;
 	private contextMenuLocation?: { top: number, left: number };
 
+	private responsePromise?: DelegatedPromise<void>;
+
+	private rerunQueue?: IVisualization[];
+
 	private constructor() {
 		// @ts-ignore because function does not exist in dev environment
 		// eslint-disable-next-line
@@ -58,10 +64,13 @@ export class StateManager {
 					const [ trackedDocId, contentNew ] = message.action.params;
 					let viz: IVisualizationItem<BytesValue> = this.trackedTextDocuments[trackedDocId];
 					viz.value = contentNew;
-					this.updateUI(viz, this.currentRequest!.transaction, true);
+					this.updateUI(viz, this.currentRequest!, true);
 				} else if (message.action.type === ServiceActionTypes.TextDocumentClosed) {
 					const [ trackedDocId ] = message.action.params;
 					delete this.trackedTextDocuments[trackedDocId];
+				} else if (message.action.type === ServiceActionTypes.SetWebviewId) {
+					const [ webviewId ] = message.action.params;
+					this.webviewId = webviewId;
 				} else {
 					throw new Error(`UI received action call of unexpected type ${message.action.type}`);
 				}
@@ -102,12 +111,14 @@ export class StateManager {
 
 	toJSON() {
 		const {
+			webviewId,
 			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount,
 			lastProtocol, protocols,
 			trackedTextDocuments
 		} = this;
 
-		return encodeURI(JSON.stringify({
+		return encodeURI(JSON.stringify(<ConsoleViewState> {
+			webviewId,
 			history, currentRequest,
 			reqInHistory: Array.from(reqInHistory.entries()),
 			resInHistory: Array.from(resInHistory.entries()),
@@ -174,10 +185,10 @@ export class StateManager {
 
 	async updateUI(
 		vizItemChanged: IVisualizationItem<any>,
-		currentTransaction: ITransaction,
+		vizCurrent: IVisualization,
 		fromTextDocument: boolean = false
 	): Promise<void> {
-		if ( this.currentRequest === undefined ) {
+		if (this.currentRequest === undefined) {
 			throw new Error('Cannot update UI if there is no current request');
 		}
 
@@ -186,15 +197,16 @@ export class StateManager {
 		}
 
 		// Promise
+		// Cancels any pending updates to the same vizItem, to prevent staggering
 		if (this.uiHandlerPromiseId[vizItemChanged.handlerId] !== undefined) {
 			this.promiseStore.cancel(this.uiHandlerPromiseId[vizItemChanged.handlerId]);
 		}
 		let vizNewPromise = this.remoteCall({
 			type: ServiceActionTypes.HandleVisualizationChange,
-			params: [vizItemChanged, currentTransaction]
+			params: [vizItemChanged, vizCurrent]
 		});
 		this.uiHandlerPromiseId[vizItemChanged.handlerId] = vizNewPromise.id;
-		let vizNew;
+		let vizNew: IVisualization;
 		try {
 			vizNew = await vizNewPromise;
 		} catch (e) {
@@ -208,8 +220,6 @@ export class StateManager {
 		// Promise end
 
 		this.currentRequest = vizNew;
-		// TODO: Scripting
-		// this.currentRequest = this.mergeVizChange(this.currentRequest, vizNew, vizItemChanged);
 		this.triggerChange();
 
 		if (vizItemChanged.ui.type === UITypes.BytesString && !fromTextDocument) {
@@ -231,11 +241,59 @@ export class StateManager {
 		this.trackedTextDocuments[textDocId] = viz;
 	}
 
-	async getCommandPreview(command: string): Promise<IVisualizationItem<any> | null> {
+	async getFunctionPreview(command: string): Promise<IVisualizationItem<any> | null> {
 		return await this.remoteCall({
 			type: ServiceActionTypes.PreviewInSandbox,
 			params: [command]
 		});
+	}
+
+	async rerun() {
+		// 1) Prepare
+		// 	- All outgoing items in history are moved to rerun queue
+		let rerunQueueNew: IVisualization[] = [];
+		for (let item of this.history) {
+			if (item.context === 'outgoing') {
+				rerunQueueNew.push(item);
+			}
+		}
+		if (this.rerunQueue !== undefined) {
+			rerunQueueNew.concat(this.rerunQueue);
+		}
+		this.rerunQueue = rerunQueueNew;
+
+		this.history = [];
+		this.reqInHistory = new Map();
+		this.resInHistory = new Map();
+		this.reqCount = 0;
+		this.resCount = 0;
+		this.triggerChange();
+
+		// 	- Sandbox is cleared
+		await this.remoteCall({
+			type: ServiceActionTypes.ClearSandbox,
+			params: []
+		});
+
+		// 2) for every req:
+		while (this.rerunQueue!.length > 0) {
+			// 	a) reviz & recompute valueFunction_s (vizCur -> tCur -> tNew -> vizNew)
+			let item: IVisualization = this.rerunQueue.shift()!; // TODO: replace with more efficient data structure
+			item = await this.revisualize(item);
+			item = await this.recomputeFunctions(item);
+			this.currentRequest = item;
+
+			// 	b) send req, remove req from queue
+			this.responsePromise = new DelegatedPromise(0);
+			await this.sendCurrentRequest();
+
+			// 	c) await res
+			await this.responsePromise;
+		}
+	}
+
+	getRerunQueue(): IVisualization[] | undefined {
+		return this.rerunQueue;
 	}
 
 	// context menus
@@ -309,9 +367,60 @@ export class StateManager {
 		this.history.push(v);
 		this.resCount++;
 
+		if (this.responsePromise !== undefined) {
+			this.responsePromise.fulfill();
+		}
+
 		this.triggerChange();
 
 		return this.resCount;
+	}
+
+	private async revisualize(viz: IVisualization): Promise<IVisualization> {
+		return await this.remoteCall({
+			type: ServiceActionTypes.Revisualize,
+			params: [viz]
+		});
+	}
+
+	private async recomputeFunctions(viz: IVisualization): Promise<IVisualization> {
+		for (let item of viz.items) {
+			if (item.valueFunction !== undefined) {
+				// TODO: what happens if recomputeFunction returns wrongly-typed thing?
+				item.value = await this.recomputeFunction(item.valueFunction, item.value);
+			}
+		}
+		return viz;
+	}
+
+	private async recomputeFunction(valueFunction: unknown, value: any): Promise<any> {
+		if (valueFunction === undefined || valueFunction === null)
+			return value;
+
+		if (typeof(valueFunction) === 'string') {
+			let vizFn = await this.getFunctionPreview(valueFunction);
+			if (vizFn === null)
+				return null;
+
+			return vizFn.value;
+		} else if (typeof(valueFunction) === 'object') {
+			if (Array.isArray(valueFunction)) {
+				let valuesNew: any[] = [];
+				for (let i = 0; i < valueFunction.length; i++) {
+					valuesNew.push(await this.recomputeFunction(valueFunction[i], value[i]));
+				}
+				return valuesNew;
+			} else {
+				let valuesNew: { [key: string]: any } = {};
+				for (let key in valueFunction) {
+					//@ts-ignore I mean, here valueFunction has string keys, but TS doesn't know
+					valuesNew[key] = await this.recomputeFunction(valueFunction[key], value[key]);
+				}
+				return valuesNew;
+			}
+		}
+
+		return null;
 	}
 
 	// TODO: response always immutable?
@@ -351,9 +460,10 @@ export class StateManager {
 	}
 
 	private attemptRestore(): boolean {
-		let prevState = this.vscode.getState();
-		if (prevState) {
-			prevState = JSON.parse(decodeURI(prevState));
+		let prevStateEncoded = this.vscode.getState();
+		if (prevStateEncoded) {
+			let prevState: ConsoleViewState = JSON.parse(decodeURI(prevStateEncoded));
+			this.webviewId = prevState.webviewId;
 			this.history = prevState.history;
 			this.currentRequest = prevState.currentRequest;
 			this.reqInHistory = new Map(prevState.reqInHistory);
@@ -381,83 +491,11 @@ export class StateManager {
 			{}, this.history[this.reqInHistory.get(reqIndex)!]
 		);
 		this.triggerChange();
-	}
 
-	private mergeVizChange(
-		vizOld: IVisualization,
-		vizNew: IVisualization,
-		vizItem: IVisualizationItem<any>
-	): IVisualization {
-		let vizItemsMerged = this.mergeVizItemsChange(vizOld.items, vizNew.items, vizItem);
-		vizNew.items = vizItemsMerged;
-		return vizNew;
-	}
-
-	private mergeVizItemsChange(
-		vizOld: IVisualizationItem<any>[],
-		vizNew: IVisualizationItem<any>[],
-		vizItemChanged: IVisualizationItem<any>
-	): IVisualizationItem<any>[] {
-		// in place for vizNew
-		// The issue is that the vizOld goes through a roundtrip of [vizItem, t] -> tNew -> vizNew
-		// on the services side (node), and in the process loses the valueFunction data, because it
-		// isn't stored on the transaction.
-		// Kind of a hack, but is the easiest way to preserve valueFunction data since it's not
-		// desirable to put it on the transaction.
-		let iOld = 0, iNew = 0;
-		while (iOld < vizOld.length && iNew < vizNew.length) {
-			let itemOld = vizOld[iOld];
-			let itemNew = vizNew[iNew];
-			if (itemOld.handlerId == itemNew.handlerId) {
-				if (itemNew.handlerId == vizItemChanged.handlerId) {
-					itemNew.valueFunction = vizItemChanged.valueFunction;
-				} else if (itemNew.ui.type === UITypes.OneOfMany) {
-					// OneOfMany item has value of type IVisualizationItem[]
-					itemNew.value = this.mergeVizItemsChange(itemOld.value, itemNew.value, vizItemChanged);
-				} else if (itemOld.valueFunction !== undefined && this.isEqualDeep(itemOld.value, itemNew.value)) {
-					itemNew.valueFunction = itemOld.valueFunction;
-				}
-				iOld++;
-				iNew++;
-			} else if (itemOld.handlerId < itemNew.handlerId) {
-				iOld++;
-			} else {
-				iNew++;
-			}
-		}
-
-		return vizNew;
-	}
-
-	private isEqualDeep(a: unknown, b: unknown): boolean {
-		if (typeof(a) === 'object' && typeof(b) === 'object') {
-			if (Array.isArray(a) && Array.isArray(b)) {
-				if (a.length !== b.length)
-					return false;
-
-				for (let i = 0; i < a.length; i++) {
-					if (!this.isEqualDeep(a[i], b[i])) {
-						return false;
-					}
-				}
-
-				return true;
-			} else if (a === null || b === null) {
-				return (a === b);
-			} else {
-				for (let key in a) {
-					if (!(key in b)) {
-						return false;
-					// @ts-ignore not sure why type checking is failing here
-					} else if (!this.isEqualDeep(a[key], b[key])) {
-						return false;
-					}
-				}
-
-				return true;
-			}
-		} else {
-			return (a === b);
-		}
+		// Revisualize old req so there is a chance to update stale visualizations
+		this.revisualize(this.currentRequest).then((vizNew) => {
+			this.currentRequest = vizNew;
+			this.triggerChange();
+		})
 	}
 }

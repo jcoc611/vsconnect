@@ -5,7 +5,7 @@
 // import { VisualizationItem } from './VisualizationItem';
 
 // interface InterpreterProps {
-// 	getCommandPreview: (command: string) => Promise<IVisualizationItem | null>;
+// 	getFunctionPreview: (command: string) => Promise<IVisualizationItem | null>;
 // }
 
 // interface InterpreterState {
@@ -18,7 +18,7 @@
 
 // 	onChange = (e : React.ChangeEvent<HTMLInputElement>) => {
 // 		this.setState({ value: e.target.value, preview: undefined });
-// 		this.props.getCommandPreview(e.target.value).then((viz) => {
+// 		this.props.getFunctionPreview(e.target.value).then((viz) => {
 // 			if (viz !== null) {
 // 				this.setState({ value: this.state.value, preview: viz });
 // 			}

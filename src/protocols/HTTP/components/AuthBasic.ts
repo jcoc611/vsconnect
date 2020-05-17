@@ -2,16 +2,16 @@
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent, deleteKeyValueComponent, setKeyValueComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, deleteKeyValueComponent, setKeyValueComponent, getKeyValueComponent } from "../../../utils/transactionTools";
 
-export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
+export class AuthBasicComponent extends UserInterfaceHandler<[string, string]> {
 
-	defaultValue(): string[] {
+	defaultValue(): [string, string] {
 		return [ '', '' ];
 	}
 
 	getUI(t: ITransaction, context: IContext): IUserInterface {
-		let value: string[] = this.getValueFromTransaction(t, context);
+		let value: [string, string] = this.getValueFromTransaction(t, context);
 		return {
 			type: UITypes.Form,
 			name: 'auth',
@@ -37,7 +37,7 @@ export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
 		return context === 'outgoing' && hasComponent(t, 'headers');
 	}
 
-	getTransactionFromValue(valueNew: string[], tCurrent: ITransaction): ITransaction {
+	getTransactionFromValue(valueNew: [string, string], tCurrent: ITransaction): ITransaction {
 		if (valueNew.length < 2 || (valueNew[0] === '' && valueNew[1] === '')) {
 			return deleteKeyValueComponent(tCurrent, 'headers', 'authorization');
 		}
@@ -46,19 +46,21 @@ export class AuthBasicComponent extends UserInterfaceHandler<string[]> {
 		return setKeyValueComponent(tCurrent, 'headers', 'authorization', basicAuthStr);
 	}
 
-	getValueFromTransaction(tNew: ITransaction, context: IContext): string[] {
-		return this.fromHeaders( getComponent<KeyValues<string>>(tNew, 'headers') );
+	getValueFromTransaction(tNew: ITransaction, context: IContext): [string, string] {
+		let headerValue = getKeyValueComponent(tNew, 'headers', 'authorization', '');
+		if (headerValue === '')
+			return ['', ''];
+
+		return this.fromHeaderValue(headerValue);
 	}
 
-	private fromHeaders(headers: KeyValues<string>): string[] {
-		let auth: string[] | undefined = headers.find((h) => h[0].toLowerCase() == 'authorization');
-		if (auth === undefined)
+	private fromHeaderValue(headerValue: string): [string, string] {
+		if (!headerValue.toLowerCase().startsWith('basic'))
 			return ['', ''];
 
-		if (!auth[1].toLowerCase().startsWith('basic'))
-			return ['', ''];
+		let dataEncoded: string = Buffer.from(headerValue.split(' ')[1], 'base64').toString('utf8');
+		let userEnd = dataEncoded.indexOf(':');
 
-		let data: string[] = Buffer.from(auth[1].split(' ')[1], 'base64').toString('utf8').split(':');
-		return data;
+		return [ dataEncoded.substr(0, userEnd), dataEncoded.substr(userEnd + 1) ];
 	}
 }

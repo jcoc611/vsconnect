@@ -33,6 +33,13 @@ export abstract class Store<T> {
 		}
 	}
 
+	public populateDefaultRequest(tReq: ITransaction): ITransaction {
+		let keyDefault = this.getKeyFilterFromTransaction(tReq);
+		let storeItems = this.getItems(keyDefault);
+
+		return this.getTransactionFromStoreItems(storeItems, tReq);
+	}
+
 	public didRequestChange(tOld: ITransaction, tNew: ITransaction): ITransaction {
 		let keyOld = this.getKeyFilterFromTransaction(tOld);
 		let keyNew = this.getKeyFilterFromTransaction(tNew);

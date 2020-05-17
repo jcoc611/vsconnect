@@ -2,7 +2,9 @@
 
 import { UITypes, ITransaction, IUserInterface, IContext, BytesValue } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent, setKeyValueComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, setKeyValueComponent, hasKeyValueComponent, deleteComponent } from "../../../utils/transactionTools";
+
+const multipartMIME = 'multipart/form-data; boundary=<calculated when sent>';
 
 export type MultipartValue = [string, BytesValue, string][];
 export class BodyMultipartComponent extends UserInterfaceHandler<MultipartValue> {
@@ -41,16 +43,25 @@ export class BodyMultipartComponent extends UserInterfaceHandler<MultipartValue>
 		return (context === 'outgoing' && hasComponent(t, 'body'));
 	}
 
+	shouldRecompute(tOld: ITransaction, tNew: ITransaction): boolean {
+		return (hasComponent(tNew, 'extra:body-multipart')
+			&& !hasKeyValueComponent(tNew, 'headers', 'Content-Type', multipartMIME));
+	}
+
 	getTransactionFromValue(valueNew: MultipartValue, tCurrent: ITransaction): ITransaction {
+		if (valueNew.length == 0) {
+			return deleteComponent(tCurrent, 'extra:body-multipart');
+		}
+
 		let tNew = tCurrent;
-		tNew = setKeyValueComponent(
-			tNew, 'headers', 'Content-Type',
-			'multipart/form-data; boundary=<calculated when sent>'
-		);
+		tNew = setKeyValueComponent(tNew, 'headers', 'Content-Type', multipartMIME);
 		return setComponent(tNew, 'extra:body-multipart', valueNew);
 	}
 
 	getValueFromTransaction(tNew: ITransaction, context: IContext): MultipartValue {
+		if (!hasKeyValueComponent(tNew, 'headers', 'Content-Type', multipartMIME))
+			return [];
+
 		return getComponent<MultipartValue>(tNew, 'extra:body-multipart', []);
 	}
 }

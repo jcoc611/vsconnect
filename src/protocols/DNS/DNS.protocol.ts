@@ -305,7 +305,7 @@ export class DNSProtocol extends ProtocolHandler {
 		};
 	}
 
-	do( transaction: ITransaction ): void {
+	do(transaction: ITransaction, sourceId?: number): void {
 		let questions: IQuestion[] = getComponent<[string, string][]>(transaction, 'questions').map(
 			([name, typeStr]: [string, string]) => ({
 				name,
@@ -315,8 +315,8 @@ export class DNSProtocol extends ProtocolHandler {
 		);
 
 		let client = new DnsClient(getComponent<string>(transaction, 'host'));
-		client.queryMulti(questions).then( (msg) => {
-			this.trigger( 'response', DNSProtocol.fromNativeResponse(msg) );
-		} )
+		client.queryMulti(questions).then((msg) => {
+			this.trigger('response', DNSProtocol.fromNativeResponse(msg), sourceId);
+		});
 	}
 }

@@ -16,7 +16,7 @@ import { ObjectInput } from './visualizationItems/ObjectInput';
 interface VisualizationItemProps {
 	onChange?: (viz: IVisualizationItem<any>) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void;
-	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	getFunctionPreview?: (command: string) => Promise<IVisualizationItem<any> | null>;
 
 	item: IVisualizationItem<any>;
 	// index: number;
@@ -26,7 +26,8 @@ interface VisualizationItemProps {
 
 interface VisualizationItemState {
 	transientValue: any;
-	transientValueFunction?: string;
+	transientValueFunction?: any;
+	transientValuePreview?: any;
 }
 
 export class VisualizationItem extends React.Component<VisualizationItemProps, VisualizationItemState> {
@@ -38,6 +39,7 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 		this.state = {
 			transientValue: props.item.value,
 			transientValueFunction: props.item.valueFunction,
+			transientValuePreview: props.item.valuePreview,
 		};
 	}
 
@@ -48,29 +50,43 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 		this.setState({
 			transientValue: propsNew.item.value,
 			transientValueFunction: propsNew.item.valueFunction,
+			transientValuePreview: propsNew.item.valuePreview,
 		});
 	}
 
-	handleChange = (newValue: any, overrideItem: boolean = false, valueFunctionNew?: any): void => {
+	handleChange = (
+		newValue: any,
+		overrideItem: boolean = false,
+		valueFunctionNew?: any,
+		valuePreviewNew?: any,
+	): void => {
 		if (this.props.onChange) {
 			this.props.onChange(
 				(overrideItem)? newValue : Object.assign({}, this.props.item, {
 					value: newValue,
-					valueFunction: valueFunctionNew
+					valueFunction: valueFunctionNew,
+					valuePreview: valuePreviewNew,
 				})
 			);
 		}
 
-		if (!overrideItem)
-			this.setState({ transientValue: newValue, transientValueFunction: valueFunctionNew });
+		if (!overrideItem) {
+			this.setState({
+				transientValue: newValue,
+				transientValueFunction: valueFunctionNew,
+				transientValuePreview: valuePreviewNew,
+			});
+		}
 	}
 
 	handleChangeCommand = (valueFunctionNew: string): void => {
+		const { item } = this.props;
 		if (this.props.onChange) {
-			this.props.getCommandPreview(valueFunctionNew).then((vizNew) => {
+			this.props.getFunctionPreview!(valueFunctionNew).then((vizNew) => {
 				this.props.onChange!(
 					Object.assign({}, this.props.item, {
-						value: (vizNew === null) ? '' : vizNew.value,
+						value: (vizNew === null || vizNew.ui.type !== item.ui.type) ? '' : vizNew.value,
+						valuePreview: (vizNew !== null && vizNew.ui.type !== item.ui.type)? vizNew.value : undefined,
 						valueFunction: valueFunctionNew
 					})
 				);
@@ -87,12 +103,12 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 	}
 
 	render() {
-		const { item, readOnly, inline, getCommandPreview } = this.props;
+		const { item, readOnly, inline, getFunctionPreview } = this.props;
 		const value = this.state.transientValue;
 		const valueFunction = this.state.transientValueFunction;
+		const valuePreview = this.state.transientValuePreview;
 
 		let ElementType: { new(props: AbstractItemProps<any>): AbstractItem<any, any> } | undefined;
-		let openTextDocument: (( docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void) | undefined;
 
 		switch (item.ui.type) {
 			case UITypes.KeyValues:
@@ -113,12 +129,10 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.BytesString:
 				ElementType = BytesStringInput;
-				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.BytesInline:
 				ElementType = BytesInlineInput;
-				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Textarea:
@@ -127,7 +141,6 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.Table:
 				ElementType = TableEdit;
-				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Boolean:
@@ -140,12 +153,10 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 
 			case UITypes.OneOfMany:
 				ElementType = OneOfManyItem;
-				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Form:
 				ElementType = FormItem;
-				openTextDocument = this.props.openTextDocument;
 				break;
 
 			case UITypes.Object:
@@ -162,13 +173,14 @@ export class VisualizationItem extends React.Component<VisualizationItemProps, V
 			name={item.ui.name}
 			value={value}
 			valueFunction={valueFunction}
+			valuePreview={valuePreview}
 			inline={inline}
 			readOnly={readOnly}
 			location={item.ui.location}
 			onChange={this.handleChange}
 			onChangeCommand={this.handleChangeCommand}
 			openTextDocument={this.doOpenTextDocument}
-			getCommandPreview={getCommandPreview}
+			getFunctionPreview={getFunctionPreview}
 			components={item.ui.components}
 			allowedValues={item.ui.allowedValues}
 			defaultValue={item.ui.defaultValue} />;
@@ -226,7 +238,7 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem<any>[], OneOfManySta
 	}
 
 	render() {
-		const { value, readOnly, openTextDocument, getCommandPreview } = this.props;
+		const { value, readOnly, openTextDocument, getFunctionPreview } = this.props;
 		let options = [];
 		let selectedItem;
 
@@ -250,7 +262,7 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem<any>[], OneOfManySta
 					openTextDocument={(docOptions, vizChild) => (
 						openTextDocument!(docOptions, (vizChild)? vizChild: item)
 					)}
-					getCommandPreview={getCommandPreview} />;
+					getFunctionPreview={getFunctionPreview} />;
 			}
 		}
 
@@ -263,12 +275,27 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem<any>[], OneOfManySta
 
 class FormItem extends AbstractItem<any[]> {
 	handleChange = (item: IVisualizationItem<any>) => {
+		const { valueFunction, valuePreview } = this.props;
 		let valueNew = this.cloneValue();
-		let valueFunctionNew = this.cloneValueFunction();
-
 		valueNew[item.handlerId] = item.value;
-		valueFunctionNew[item.handlerId] = item.valueFunction;
-		this.props.onChange!(valueNew, false, valueFunctionNew);
+
+		let valueFunctionNew;
+		if (item.valueFunction === undefined && valueFunction === undefined) {
+			valueFunctionNew = undefined;
+		} else {
+			valueFunctionNew = this.cloneOrNew(valueFunction);
+			valueFunctionNew[item.handlerId] = item.valueFunction;
+		}
+
+		let valuePreviewNew;
+		if (item.valuePreview === undefined && valuePreview === undefined) {
+			valuePreviewNew = undefined;
+		} else {
+			valuePreviewNew = this.cloneOrNew(valuePreview);
+			valuePreviewNew[item.handlerId] = item.valuePreview;
+		}
+
+		this.props.onChange!(valueNew, false, valueFunctionNew, valuePreviewNew);
 	}
 
 	private cloneValue(): any[] {
@@ -280,18 +307,18 @@ class FormItem extends AbstractItem<any[]> {
 		});
 	}
 
-	private cloneValueFunction(): (string | undefined)[] {
-		if (this.props.valueFunction === undefined) {
+	private cloneOrNew(arr: any[] | undefined): (string | undefined)[] {
+		if (arr === undefined) {
 			return new Array(this.props.value.length);
 		}
 
-		return this.props.valueFunction.slice(0);
+		return arr.slice(0);
 	}
 
 	render() {
 		const {
-			components, readOnly, value, valueFunction,
-			openTextDocument, getCommandPreview
+			components, readOnly, value, valueFunction, valuePreview,
+			openTextDocument, getFunctionPreview
 		} = this.props;
 		let childrenItems: JSX.Element[] = [];
 
@@ -303,14 +330,15 @@ class FormItem extends AbstractItem<any[]> {
 				handlerId: i,
 				ui: components[i],
 				value: value[i],
-				valueFunction: (valueFunction === undefined)? undefined: valueFunction[i],
+				valueFunction: (valueFunction && valueFunction[i] !== null)? valueFunction[i]: undefined,
+				valuePreview: (valuePreview && valuePreview[i] !== null)? valuePreview[i]: undefined,
 			};
 			childrenItems.push(
 				<div className="form-item" key={i}>
 					<span className="form-item-label">{viz.ui.name}</span>
 					<VisualizationItem
 						key={i} onChange={this.handleChange}
-						getCommandPreview={getCommandPreview}
+						getFunctionPreview={getFunctionPreview}
 						openTextDocument={(docOptions, vizChild) => (
 							openTextDocument!(docOptions, (vizChild)? vizChild: viz)
 						)}

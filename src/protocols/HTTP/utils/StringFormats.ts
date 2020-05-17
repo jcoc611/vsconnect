@@ -88,7 +88,7 @@ export class StringFormats {
 		).join('; ');
 	}
 
-	static parseSetCookiesHeader(headers: string[], hostDefault: string): StoreItem<CookieItem>[] {
+	static parseSetCookiesHeader(headers: string[], hostDefault?: string): StoreItem<CookieItem>[] {
 		return headers.map((setCookie) => {
 			let parts = setCookie.split('; ');
 			let [key, value] = StringFormats.parseKeyValue(parts[0]);

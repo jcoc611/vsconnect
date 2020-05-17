@@ -9,7 +9,7 @@ export interface CookieItem {
 	name: string;
 	value: string;
 
-	domain: string;
+	domain?: string;
 	path?: string;
 	tlsOnly: boolean;
 	httpOnly: boolean;
@@ -102,11 +102,11 @@ export class CookieStore extends Store<CookieItem> {
 		return setKeyValueComponent(tCur, 'headers', 'cookie', cookieHeader);
 	}
 
-	private getDomainFromHost(host: string): string {
+	private getDomainFromHost(host: string): string | undefined {
 		let res = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(host);
 		let domain = res![2];
 		if (!domain)
-			return '';
+			return undefined;
 		return domain;
 	}
 }

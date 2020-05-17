@@ -7,13 +7,15 @@ import { Transaction } from './Transaction';
 interface ConsoleSurfaceProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
-	updateUI: (viz: IVisualizationItem<any>, currentTransaction: ITransaction) => void;
+	updateUI: (vizItem: IVisualizationItem<any>, vizCurrent: IVisualization) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void;
-	getCommandPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
+	rerun: () => void;
 
 	currentRequest: IVisualization;
 	history: IVisualization[];
 	allProtocols: string[];
+	rerunQueue?: IVisualization[];
 }
 
 export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
@@ -38,8 +40,8 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 	render() {
 		// const history = this.props.history;
 		const {
-			history, currentRequest, allProtocols,
-			sendCurrentRequest, setProtocol, updateUI, openTextDocument, getCommandPreview
+			history, currentRequest, rerunQueue, allProtocols,
+			sendCurrentRequest, setProtocol, updateUI, openTextDocument, getFunctionPreview
 		} = this.props;
 
 		let reqCount = 0;
@@ -65,27 +67,47 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 				setProtocol={setProtocol}
 				sendCurrentRequest={sendCurrentRequest}
 				openTextDocument={openTextDocument}
-				getCommandPreview={getCommandPreview} />;
+				getFunctionPreview={getFunctionPreview} />;
 		} );
 
-		content.push(
-			<Transaction
-				index={reqCount++}
-				key={reqCount + resCount}
-				readOnly={false}
-				visualization={currentRequest}
-				allProtocols={allProtocols}
+		let rerunContent: JSX.Element[] = [];
+		if (rerunQueue !== undefined && rerunQueue.length > 0) {
+			rerunContent = rerunQueue.map((item, index) => {
+				// TODO: Some of the method props not needed in this case, remove
+				return <Transaction
+					index={index}
+					key={index}
+					readOnly={true}
+					visualization={item}
+					allProtocols={allProtocols}
 
-				updateUI={updateUI}
-				setProtocol={setProtocol}
-				sendCurrentRequest={sendCurrentRequest}
-				openTextDocument={openTextDocument}
-				getCommandPreview={getCommandPreview} />
-		);
+					updateUI={updateUI}
+					setProtocol={setProtocol}
+					sendCurrentRequest={sendCurrentRequest}
+					openTextDocument={openTextDocument}
+					getFunctionPreview={getFunctionPreview} />;
+			});
+		} else {
+			content.push(
+				<Transaction
+					index={reqCount++}
+					key={reqCount + resCount}
+					readOnly={false}
+					visualization={currentRequest}
+					allProtocols={allProtocols}
+
+					updateUI={updateUI}
+					setProtocol={setProtocol}
+					sendCurrentRequest={sendCurrentRequest}
+					openTextDocument={openTextDocument}
+					getFunctionPreview={getFunctionPreview} />
+			);
+		}
 
 		return <div id="content">
 			<div style={({'marginTop':'15px'})}>🧪 Thanks for trying out the <i>alpha</i> version of VSConnect! All feedback is welcome on <a target="_blank" href="https://github.com/jcoc611/vsconnect/issues">Github</a>.</div>
 			{content}
+			<div style={({'opacity': '0.7'})}>{rerunContent}</div>
 		</div>;
 	}
 }

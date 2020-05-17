@@ -103,7 +103,7 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 
 	render() {
 		const {
-			onChange, openTextDocument, getCommandPreview,
+			onChange, openTextDocument, getFunctionPreview,
 
 			name, value, location,
 			readOnly, allowedValues,
@@ -119,7 +119,7 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 				components={components} inline={true}
 
 				onChange={onChange} openTextDocument={openTextDocument}
-				getCommandPreview={getCommandPreview} />;
+				getFunctionPreview={getFunctionPreview} />;
 		} else {
 			editItem = <BytesStringInput name={name} value={value}
 				location={location}
@@ -127,7 +127,7 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 				components={components} inline={true}
 
 				onChange={onChange} openTextDocument={openTextDocument}
-				getCommandPreview={getCommandPreview} />;
+				getFunctionPreview={getFunctionPreview} />;
 		}
 
 
@@ -135,7 +135,7 @@ export class BytesInlineInput extends AbstractItem<BytesValue, BytesInlineState>
 			<Dropdown name="bytes inline type" value={type} location={location}
 				allowedValues={['text', 'file']} readOnly={readOnly}
 				onChange={this.setType}
-				getCommandPreview={getCommandPreview} />
+				getFunctionPreview={getFunctionPreview} />
 			{editItem}
 		</div>;
 	}

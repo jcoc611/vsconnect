@@ -8,9 +8,9 @@ type TableEditOnChange = (valueNew: any[][], overrideItem?: boolean, valueFuncti
 export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 	render() {
 		const {
-			getCommandPreview, onChange, onChangeCommand, openTextDocument,
+			getFunctionPreview, onChange, onChangeCommand, openTextDocument,
 
-			name, value, valueFunction, location,
+			name, value, valueFunction, valuePreview, location,
 
 			readOnly, allowedValues, defaultValue, /*components,*/ inline,
 		} = this.props;
@@ -34,7 +34,7 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 			}
 		];
 		return <TableEdit
-			getCommandPreview={getCommandPreview}
+			getFunctionPreview={getFunctionPreview}
 			onChange={onChange as TableEditOnChange}
 			onChangeCommand={onChangeCommand}
 			openTextDocument={openTextDocument}
@@ -42,6 +42,7 @@ export class KeyValueEdit extends AbstractItem<KeyValues<string>> {
 			name={name}
 			value={value}
 			valueFunction={valueFunction}
+			valuePreview={valuePreview}
 			location={location}
 
 			readOnly={readOnly}

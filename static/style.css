@@ -592,6 +592,10 @@ div.form .form-item > span.form-item-label {
 	padding-right: 25px;
 }
 
+.stringInput-wrapper.has-function input {
+	padding-left: 20px;
+}
+
 .stringInput-wrapper span.stringInput {
 	word-break: break-all;
 	padding: 2px;
@@ -616,6 +620,14 @@ div.form .form-item > span.form-item-label {
 	border-bottom: 2px solid var(--vscode-statusBar-background) !important;
 }
 
+.stringInput-wrapper .stringInput-prompt {
+	position: absolute;
+	margin-left: 8px;
+	margin-top: 1px;
+	color: var(--vscode-editor-foreground);
+	opacity: 0.6;
+}
+
 .stringInput-wrapper .stringInput-code {
 	position: absolute;
 	margin-left: -14px;
@@ -629,7 +641,7 @@ div.form .form-item > span.form-item-label {
 	opacity: 1;
 }
 
-.stringInput-wrapper .stringInput-code.active {
+.stringInput-wrapper.has-function .stringInput-code {
 	font-weight: 900;
 	color: var(--vscode-terminal-ansiBrightBlue);
 	opacity: 1;
@@ -652,9 +664,44 @@ div.form .form-item > span.form-item-label {
 	line-height: 0.9;
 }
 
-.stringInput-wrapper .stringInput-preview span {
+.stringInput-wrapper .stringInput-preview > span {
 	display: inline-block;
 	margin-right: 5px;
 	opacity: 0.7;
 	font-size: 0.8em;
+}
+
+.stringInput-wrapper .stringInput-preview .objectInput {
+	opacity: 1;
+	font-size: 1em;
+	line-height: 1.5;
+}
+
+/** Object input */
+.objectInput > span {
+	color: var(--vscode-titleBar-inactiveForeground);
+}
+
+.objectInput-string {
+	color: var(--vscode-debugTokenExpression-string);
+}
+
+.objectInput-number {
+	color: var(--vscode-debugTokenExpression-number);
+}
+
+.objectInput-key {
+	color: var(--vscode-debugTokenExpression-name);
+}
+
+.objectInput-separator {
+	margin-right: 5px;
+}
+
+.objectInput div {
+	margin-left: 20px;
+}
+
+.objectInput .expansionToggle {
+	padding: 0 !important;
 }

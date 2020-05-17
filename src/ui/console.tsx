@@ -14,13 +14,15 @@ state.getAllProtocols().then( (protocols) => {
 		ReactDOM.render(
 			<ConsoleSurface
 				history={ newHistory }
+				rerunQueue={ state.getRerunQueue() }
 				allProtocols={protocols}
 				currentRequest={state.getCurrentRequest()}
 				sendCurrentRequest={ state.sendCurrentRequest.bind(state) }
 				setProtocol={ state.setProtocol.bind(state) }
 				updateUI={ state.updateUI.bind(state) }
 				openTextDocument={ state.openTextDocument.bind(state) }
-				getCommandPreview={ state.getCommandPreview.bind(state) } />,
+				getFunctionPreview={ state.getFunctionPreview.bind(state) }
+				rerun={ state.rerun.bind(state) } />,
 			document.getElementById("content-wrapper")
 		);
 		window.scrollTo(0,document.body.scrollHeight);

@@ -12,6 +12,16 @@ import { Sandbox } from "./utils/Sandbox";
 
 
 export class Services extends EventEmitter {
+	private static instance?: Services;
+
+	public static GetInstance(): Services {
+		if (Services.instance === undefined) {
+			Services.instance = new Services();
+		}
+
+		return Services.instance;
+	}
+
 	/** @var protocols  map of protocol names to handlers */
 	private protocols: Map<string, ProtocolHandler> = new Map();
 
@@ -23,46 +33,51 @@ export class Services extends EventEmitter {
 	private trackedDocuments: { [key: number]: TextDocument } = {};
 	private trackedDocumentsCount: number = 0;
 
-	private sandbox: Sandbox = new Sandbox();
+	// private sandbox: Sandbox = new Sandbox();
+	private sandboxes: { [key: number]: Sandbox } = {};
 
-	async process(action: ServiceAction) : Promise<any> {
+	private constructor() {
+		super();
+	}
+
+	async process(action: ServiceAction, sourceId: number) : Promise<any> {
 		switch (action.type) {
-			// 1. The UI requests all available protocols
+			// The UI requests all available protocols
 			case ServiceActionTypes.GetAllProtocols:
 				return this.getAllProtocols();
 
-			// 2. User selects one of the protocols (e.g. default one)
+			// User selects one of the protocols (e.g. default one)
 			case ServiceActionTypes.GetNewRequest:
 				// - protocolHandler.getDefaultTransaction()
 				// - getVisualization(ITransaction) - matching UI handlers provide visualization
 				return this.getDefaultRequest(...action.params);
 
-			// 3. User edits transaction (request) using one of the Visualization items
+			// User clones a transaction from the history
+			// User reruns a transaction (with possibly different viz)
+			case ServiceActionTypes.Revisualize:
+				return this.revisualize(...action.params);
+
+			// User edits transaction (request) using one of the Visualization items
 			case ServiceActionTypes.HandleVisualizationChange:
-				return this.getVisualization(
-					'outgoing',
-					this.onVisualizationItemChange(...action.params)
-				);
+				return this.onVisualizationItemChange(...action.params);
 
-			// 4. User submits transaction
+			// User submits transaction
 			case ServiceActionTypes.DoTransaction:
-				return this.doTransaction(...action.params);
+				const [ tReq ] = action.params;
+				return this.doTransaction(tReq, sourceId);
 
-			// 5. Protocol Handler gets a new response
+			// Protocol Handler gets a new response
 			case ServiceActionTypes.VisualizeResponse:
 				// Response transaction is converted into Visualization and sent to UI
-				this.trigger('message', <ServiceAction> {
-					type: ServiceActionTypes.AppendResponse,
-					params: [ this.onResponse(...action.params) ]
-				});
-				break;
+				const [ tRes ] = action.params;
+				return this.onResponse(tRes, sourceId);
 
-			// 6. User opens a BinaryStringInput in a new text document
+			// User opens a BinaryStringInput in a new text document
 			case ServiceActionTypes.OpenTextDocument:
 				this.trigger('document:open', action.params[0]);
 				return this.trackedDocumentsCount;
 
-			// 7. User makes a change on a BinaryStringInput synced with an open document
+			// User makes a change on a BinaryStringInput synced with an open document
 			case ServiceActionTypes.TextDocumentChanged:
 				const [ docId, valueNew ] = action.params;
 				if (valueNew.type === 'string') {
@@ -71,10 +86,14 @@ export class Services extends EventEmitter {
 				// else this.trigger('document:change', ..., '<binary data>')
 				break;
 
-			// 8. User types in scripting field
+			// User types in scripting field
 			case ServiceActionTypes.PreviewInSandbox:
 				const [ strCode ] = action.params;
-				return this.sandbox.preview(strCode);
+				return this.getOrCreateSandbox(sourceId).preview(strCode);
+
+			// User requests rerunning requests
+			case ServiceActionTypes.ClearSandbox:
+				return this.clearSandbox(sourceId);
 		}
 	}
 
@@ -102,6 +121,10 @@ export class Services extends EventEmitter {
 	}
 
 	textDocumentDidClose(textDocument: TextDocument): void {
+		if (!textDocument.isClosed) {
+			return;
+		}
+
 		for (let iStr of Object.keys(this.trackedDocuments)) {
 			let i = Number(iStr);
 			if (this.trackedDocuments[i] === textDocument) {
@@ -116,11 +139,11 @@ export class Services extends EventEmitter {
 
 	// Adding protocols
 	addProtocol(name: string, handler: ProtocolHandler): void {
-		handler.on('response', (response: ITransaction) => {
+		handler.on('response', (response: ITransaction, sourceId?: number) => {
 			this.trigger('message', <ServiceAction> {
 				type: ServiceActionTypes.AppendResponse,
-				params: [ this.onResponse(response) ]
-			});
+				params: [ this.onResponse(response, sourceId) ]
+			}, sourceId);
 		});
 
 		let metadata = handler.getMetadata();
@@ -182,13 +205,18 @@ export class Services extends EventEmitter {
 	}
 
 	getDefaultRequest(protocolId: string): IVisualization {
-		return this.getVisualization(
-			'outgoing',
-			this.getProtocolHandler(protocolId).getDefaultTransaction()
-		);
+		let tDefault = this.getProtocolHandler(protocolId).getDefaultTransaction();
+
+		for (let store of this.stores) {
+			if (store.shouldProcess(tDefault, 'outgoing')) {
+				tDefault = store.populateDefaultRequest(tDefault);
+			}
+		}
+
+		return this.getVisualization('outgoing', tDefault);
 	}
 
-	doTransaction(transaction: ITransaction): void {
+	doTransaction(transaction: ITransaction, sourceId: number): void {
 		let handler: ProtocolHandler;
 		// if (transaction.connectionId !== undefined) {
 		// 	if (this.connections.length <= transaction.connectionId) {
@@ -199,9 +227,9 @@ export class Services extends EventEmitter {
 			handler = this.getProtocolHandler(transaction.protocolId);
 		// }
 
-		handler.do(transaction);
+		handler.do(transaction, sourceId);
 
-		this.sandbox.addRequest(transaction);
+		this.getOrCreateSandbox(sourceId).addRequest(transaction);
 	}
 
 	addUIHandler(handler: UserInterfaceHandler<any>): void {
@@ -262,11 +290,36 @@ export class Services extends EventEmitter {
 		};
 	}
 
+	private revisualize(vizCurrent: IVisualization): IVisualization {
+		let tNew = vizCurrent.transaction;
+
+		// TODO: in certain cases, this is not enough. Issues when multiple components should
+		// recompute and the expected output is given by calling one or more handlers twice.
+		for (let handler of this.uiHandlers) {
+			if (handler.shouldRecompute(tNew, tNew)) {
+				tNew = handler.getTransactionFromValue(
+					handler.getValueFromTransaction(tNew, 'outgoing'),
+					tNew
+				);
+			}
+		}
+
+		for (let store of this.stores) {
+			if (store.shouldProcess(tNew, 'outgoing')) {
+				tNew = store.populateDefaultRequest(tNew);
+			}
+		}
+
+		let vizNewFromT = this.getVisualization(vizCurrent.context, tNew);
+		return this.mergeVizChange(vizCurrent, vizNewFromT);
+	}
+
 	private onVisualizationItemChange(
-		viz: IVisualizationItem<any>,
-		tCurrent: ITransaction
-	): ITransaction {
-		let tNew = this.uiHandlers[viz.handlerId].getTransactionFromValue(viz.value, tCurrent);
+		vizItem: IVisualizationItem<any>,
+		vizCurrent: IVisualization
+	): IVisualization {
+		let tCurrent = vizCurrent.transaction;
+		let tNew = this.uiHandlers[vizItem.handlerId].getTransactionFromValue(vizItem.value, tCurrent);
 
 		// TODO: in certain cases, this is not enough. Issues when multiple components should
 		// recompute and the expected output is given by calling one or more handlers twice.
@@ -285,11 +338,13 @@ export class Services extends EventEmitter {
 			}
 		}
 
-		return tNew;
+		let vizNewFromT = this.getVisualization(vizCurrent.context, tNew);
+		return this.mergeVizChange(vizCurrent, vizNewFromT, vizItem);
 	}
 
-	private onResponse(tResponse: ITransaction): IVisualization {
-		this.sandbox.addResponse(tResponse);
+	private onResponse(tResponse: ITransaction, sourceId?: number): IVisualization {
+		if (sourceId !== undefined)
+			this.getOrCreateSandbox(sourceId).addResponse(tResponse);
 
 		for (let store of this.stores) {
 			if (store.shouldProcess(tResponse, 'incoming')) {
@@ -299,4 +354,167 @@ export class Services extends EventEmitter {
 
 		return this.getVisualization('incoming', tResponse);
 	}
+
+////#region Scripting viz helpers
+	private matchesVizType(u: unknown, type: UITypes): boolean {
+		switch (type) {
+			case UITypes.KeyValues:
+
+				break;
+			case UITypes.Enum:
+				break;
+			case UITypes.String:
+				return (typeof(u) === 'string');
+
+			case UITypes.Host:
+				// TODO
+				return false;
+				break;
+			case UITypes.BytesBinary:
+				break;
+			case UITypes.BytesString:
+				break;
+			case UITypes.BytesInline:
+				break;
+			case UITypes.Textarea:
+				break;
+			case UITypes.Table:
+				break;
+			case UITypes.Boolean:
+				return (typeof(u) === 'boolean');
+				break;
+			case UITypes.Object:
+				return (typeof(u) === 'object');
+				break;
+			case UITypes.HTML:
+				return (typeof(u) === 'string');
+				break;
+
+			// Collections
+			case UITypes.OneOfMany:
+				// TODO
+				return false;
+			case UITypes.Form:
+				return false;
+
+			default:
+				return false;
+		}
+
+		//debug: unreachable
+		return false;
+	}
+
+	private mergeVizChange(
+		vizOld: IVisualization,
+		vizNew: IVisualization,
+		vizItem?: IVisualizationItem<any>
+	): IVisualization {
+		let vizItemsMerged = this.mergeVizItemsChange(vizOld.items, vizNew.items, vizItem);
+		vizNew.items = vizItemsMerged;
+		return vizNew;
+	}
+
+	private mergeVizItemsChange(
+		vizOld: IVisualizationItem<any>[],
+		vizNew: IVisualizationItem<any>[],
+		vizItemChanged?: IVisualizationItem<any>
+	): IVisualizationItem<any>[] {
+		// in place for vizNew
+		// The issue is that the vizOld goes through a roundtrip of [vizItem, t] -> tNew -> vizNew
+		// on the services side (node), and in the process loses the valueFunction data, because it
+		// isn't stored on the transaction.
+		// Kind of a hack, but is the easiest way to preserve valueFunction data since it's not
+		// desirable to put it on the transaction.
+		let iOld = 0, iNew = 0;
+		while (iOld < vizOld.length && iNew < vizNew.length) {
+			let itemOld = vizOld[iOld];
+			let itemNew = vizNew[iNew];
+			if (itemOld.handlerId == itemNew.handlerId) {
+				if (vizItemChanged !== undefined && itemNew.handlerId == vizItemChanged.handlerId) {
+					itemNew.valueFunction = vizItemChanged.valueFunction;
+					itemNew.valuePreview = vizItemChanged.valuePreview;
+				} else if (itemNew.ui.type === UITypes.OneOfMany) {
+					// OneOfMany item has value of type IVisualizationItem[]
+					itemNew.value = this.mergeVizItemsChange(itemOld.value, itemNew.value, vizItemChanged);
+				} else if (itemOld.valueFunction !== undefined && this.isEqualDeep(itemOld.value, itemNew.value)) {
+					itemNew.valueFunction = itemOld.valueFunction;
+					itemNew.valuePreview = itemOld.valuePreview;
+				}
+				iOld++;
+				iNew++;
+			} else if (itemOld.handlerId < itemNew.handlerId) {
+				iOld++;
+			} else {
+				iNew++;
+			}
+		}
+
+		return vizNew;
+	}
+
+	private isEqualDeep(a: unknown, b: unknown): boolean {
+		if (typeof(a) === 'object' && typeof(b) === 'object') {
+			if (Array.isArray(a) && Array.isArray(b)) {
+				if (a.length !== b.length)
+					return false;
+
+				for (let i = 0; i < a.length; i++) {
+					if (!this.isEqualDeep(a[i], b[i])) {
+						return false;
+					}
+				}
+
+				return true;
+			} else if (a === null || b === null) {
+				return (a === b);
+			} else {
+				for (let key in a) {
+					if (!(key in b)) {
+						return false;
+					// @ts-ignore not sure why type checking is failing here
+					} else if (!this.isEqualDeep(a[key], b[key])) {
+						return false;
+					}
+				}
+
+				return true;
+			}
+		} else {
+			return (a === b);
+		}
+	}
+////#endregion
+
+///#region Sandbox helpers
+	private getOrCreateSandbox(sourceId: number): Sandbox {
+		if (this.sandboxes[sourceId] === undefined)
+			this.sandboxes[sourceId] = new Sandbox();
+
+		return this.sandboxes[sourceId];
+	}
+
+	private clearSandbox(sourceId: number) {
+		delete this.sandboxes[sourceId];
+		this.sandboxes[sourceId] = new Sandbox();
+	}
+
+	deleteSandbox(sourceId: number): void {
+		delete this.sandboxes[sourceId];
+	}
+
+	restoreSandbox(sourceId: number, history: IVisualization[]): void {
+		if (this.sandboxes[sourceId] !== undefined)
+			return;
+
+		let sandbox = new Sandbox();
+		for (let viz of history) {
+			if (viz.context === 'outgoing')
+				sandbox.addRequest(viz.transaction);
+			else
+				sandbox.addResponse(viz.transaction);
+		}
+		this.sandboxes[sourceId] = sandbox;
+	}
+///#endregion
 }
