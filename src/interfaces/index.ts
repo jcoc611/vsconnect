@@ -87,6 +87,8 @@ export enum ITransactionState {
 }
 
 export interface ITransaction {
+	id?: number;
+	responseTo?: number;
 	protocolId: string;
 	connectionId?: number;
 	state: ITransactionState;
@@ -118,6 +120,7 @@ interface BytesEmptyValue {
 interface BytesStringValue {
 	type: 'string';
 	rawValue: string;
+	languageHint?: string;
 }
 
 interface BytesFileValue {
@@ -258,11 +261,8 @@ export interface ConsoleViewState {
 	webviewId: number;
 	history: IVisualization[];
 	currentRequest: IVisualization;
-	reqInHistory: [number, number][];
-	resInHistory: [number, number][];
-	reqCount: number;
-	resCount: number;
 	lastProtocol: string;
 	protocols?: string[];
-	trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> };
+	//  TODO: need to save and restore this in backend
+	// trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> };
 }

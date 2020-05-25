@@ -2,7 +2,7 @@
 
 [![Badge for version for Visual Studio Code extension](https://vsmarketplacebadge.apphb.com/version-short/jcoc611.vsconnect.svg?color=blue&style=flat-square&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/jcoc611.vsconnect.svg?color=blue&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Status](https://img.shields.io/badge/status-alpha-blue?color=blue&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?color=blue&style=flat-square)](http://opensource.org/licenses/MIT)
 
-![Screenshot Preview of v0.2.7](docs/assets/screenshot-client-v0.2.7.gif)
+![Screenshot Preview of v0.2.8](docs/assets/screenshot-client-v0.2.8.gif)
 
 VSConnect `("OSS - Connect")` is the ultimate network client for VS Code. It provides an interface
 similar to a command line where you can submit network requests and receive network responses. It

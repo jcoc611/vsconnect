@@ -36,6 +36,8 @@ export class Services extends EventEmitter {
 	// private sandbox: Sandbox = new Sandbox();
 	private sandboxes: { [key: number]: Sandbox } = {};
 
+	private tCount: number = 0;
+
 	private constructor() {
 		super();
 	}
@@ -206,6 +208,7 @@ export class Services extends EventEmitter {
 
 	getDefaultRequest(protocolId: string): IVisualization {
 		let tDefault = this.getProtocolHandler(protocolId).getDefaultTransaction();
+		tDefault.id = this.tCount++;
 
 		for (let store of this.stores) {
 			if (store.shouldProcess(tDefault, 'outgoing')) {
@@ -343,6 +346,8 @@ export class Services extends EventEmitter {
 	}
 
 	private onResponse(tResponse: ITransaction, sourceId?: number): IVisualization {
+		tResponse.id = this.tCount++;
+
 		if (sourceId !== undefined)
 			this.getOrCreateSandbox(sourceId).addResponse(tResponse);
 

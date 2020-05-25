@@ -38,6 +38,9 @@ export function deleteComponent(t: ITransaction, name: string): ITransaction {
 
 // Key Value Components
 export function getKeyValueComponent<T>(t: ITransaction, nameComponent: string, nameKey: T, defaultValue?: T): T {
+	if (defaultValue !== undefined && !hasComponent(t, nameComponent))
+		return defaultValue;
+
 	let componentValue = getComponent<KeyValues<T>>(t, nameComponent);
 	for (let [key, value] of componentValue) {
 		if (key === nameKey) {

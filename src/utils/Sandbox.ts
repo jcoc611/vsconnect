@@ -97,17 +97,44 @@ export class Sandbox {
 	addRequest(tReq: ITransaction): void {
 		let reqObj = Object.assign({}, tReq.components, {
 			status: tReq.shortStatus,
-			protocol: tReq.protocolId
+			protocol: tReq.protocolId,
+			'_id': tReq.id,
+			'_responseTo': tReq.responseTo,
 		});
-		this.universe.$req.push(reqObj);
+
+		// Heuristic: resending only when last request sent is "older" than tReq (id is bigger)
+		if (
+			this.universe.$req.length > 0
+			&& this.universe.$req[this.universe.$req.length - 1]!['_id'] >= tReq.id!
+		) {
+			// TODO: O(n) slow
+			let ireqPrev = this.universe.$req.findIndex(($r) => $r['_id'] === tReq.id);
+			this.universe.$req[ireqPrev] = reqObj;
+			// TODO: O(n) slow
+			this.universe.$res = this.universe.$res.filter(($r) => $r['_responseTo'] !== tReq.id);
+		} else {
+			this.universe.$req.push(reqObj);
+		}
 	}
 
 	addResponse(tRes: ITransaction): void {
 		let resObj = Object.assign({}, tRes.components, {
 			status: tRes.shortStatus,
-			protocol: tRes.protocolId
+			protocol: tRes.protocolId,
+			'_id': tRes.id,
+			'_responseTo': tRes.responseTo,
 		});
-		this.universe.$res.push(resObj);
+
+		if (
+			tRes.responseTo !== undefined
+			&& this.universe.$res.length > 0
+			&& this.universe.$res[this.universe.$res.length - 1]!['_responseTo'] >= tRes.responseTo!
+		) {
+			let ires = this.universe.$req.findIndex(($r) => $r['_responseTo'] > tRes.responseTo!);
+			this.universe.$res.splice(ires, 0, resObj);
+		} else {
+			this.universe.$res.push(resObj);
+		}
 	}
 
 	private getSnapshot(): Readonly<SandboxUniverse> {

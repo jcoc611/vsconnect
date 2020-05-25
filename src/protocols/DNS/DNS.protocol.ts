@@ -50,18 +50,18 @@ const strToRecordType: { [key: string]: QuestionType } = {
 	'MAILB': QuestionExtraType.MAILB,
 };
 
-function resourceRecordsToTable(rr: IResourceRecord[]): string[][] {
+function resourceRecordsToTable(rr: IResourceRecord[]): any[][] {
 	return rr.map((r) => [
 		r.name,
 		recordTypeToStr[r.type],
 		Formats.secondsToString(r.ttl),
-		JSON.stringify(r.rdata)
+		r.rdata
 	]);
 }
 
 export class DNSProtocol extends ProtocolHandler {
 
-	static fromNativeResponse(msg: IMessage): ITransaction {
+	static fromNativeResponse(tReq: ITransaction, msg: IMessage): ITransaction {
 		let shortStatus: string;
 
 		switch (msg.header.rcode) {
@@ -97,6 +97,7 @@ export class DNSProtocol extends ProtocolHandler {
 		}
 
 		let response: ITransaction = {
+			responseTo: tReq.id,
 			protocolId: 'DNS',
 			state: state,
 			shortStatus: shortStatus,
@@ -164,9 +165,9 @@ export class DNSProtocol extends ProtocolHandler {
 			},
 			{
 				name: 'record',
-				type: IComponentTypes.String,
+				type: IComponentTypes.Object,
 				required: true,
-				default: '',
+				default: null,
 			},
 		];
 
@@ -305,8 +306,8 @@ export class DNSProtocol extends ProtocolHandler {
 		};
 	}
 
-	do(transaction: ITransaction, sourceId?: number): void {
-		let questions: IQuestion[] = getComponent<[string, string][]>(transaction, 'questions').map(
+	do(tReq: ITransaction, sourceId?: number): void {
+		let questions: IQuestion[] = getComponent<[string, string][]>(tReq, 'questions').map(
 			([name, typeStr]: [string, string]) => ({
 				name,
 				type: strToRecordType[typeStr],
@@ -314,9 +315,9 @@ export class DNSProtocol extends ProtocolHandler {
 			})
 		);
 
-		let client = new DnsClient(getComponent<string>(transaction, 'host'));
+		let client = new DnsClient(getComponent<string>(tReq, 'host'));
 		client.queryMulti(questions).then((msg) => {
-			this.trigger('response', DNSProtocol.fromNativeResponse(msg), sourceId);
+			this.trigger('response', DNSProtocol.fromNativeResponse(tReq, msg), sourceId);
 		});
 	}
 }

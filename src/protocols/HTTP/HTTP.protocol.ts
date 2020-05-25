@@ -16,6 +16,7 @@ import { BodyBinaryComponent } from "./components/BodyBinary";
 import { BodyUrlencodedComponent } from "./components/BodyUrlencoded";
 import { BodyMultipartComponent, MultipartValue } from "./components/BodyMultipart";
 import { CookiesComponent } from "./components/Cookies";
+import { BodyRawComponent } from './components/BodyRaw';
 
 export class HTTP extends ProtocolHandler {
 	async initialize(params: any[]): Promise<boolean> {
@@ -68,20 +69,15 @@ export class HTTP extends ProtocolHandler {
 					],
 				},
 				new QueryComponent(),
-				new BodyUrlencodedComponent(),
-				new BodyMultipartComponent(),
 				{
 					name: 'body',
 					type: IComponentTypes.Bytes,
-					required: false,
-					default: { type: 'empty' } as BytesValue,
-					ui: {
-						location: 'extra',
-						type: UITypes.BytesString,
-						name: 'body',
-						subName: 'raw'
-					},
+					required: true,
+					default: { type: 'empty' },
 				},
+				new BodyUrlencodedComponent(),
+				new BodyMultipartComponent(),
+				new BodyRawComponent(),
 				new BodyBinaryComponent(),
 				new BodyPreviewComponent(),
 				{

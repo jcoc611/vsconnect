@@ -246,9 +246,10 @@ class OneOfManyItem extends AbstractItem<IVisualizationItem<any>[], OneOfManySta
 		for (let item of value) {
 			let isSelected: boolean = (item.ui.subName === this.state.selected);
 			options.push(
-				<label key={item.ui.subName}>
+				<label key={item.ui.subName} onMouseDown={(e) => e.preventDefault()}>
 					<input type="radio" name={`oneOfMany-${radioUniqueId}`} value={item.ui.subName}
-						onChange={this.selectItem} checked={isSelected} />
+						onChange={this.selectItem} checked={isSelected}
+						onMouseDown={(e) => e.preventDefault()} />
 					{item.ui.subName}
 				</label>
 			);

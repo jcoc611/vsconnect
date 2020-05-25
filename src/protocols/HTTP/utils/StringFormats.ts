@@ -131,6 +131,15 @@ export class StringFormats {
 		// TODO
 	}
 
+	static mimeFromContentType(contentType: string): string {
+		let iMimeEnd = contentType.indexOf(';');
+		if (iMimeEnd >= 0) {
+			return contentType.substr(0, iMimeEnd);
+		}
+
+		return contentType;
+	}
+
 	private static parseKeyValue(keyValue: string): [string, string] {
 		let i = keyValue.indexOf('=');
 		let key = (i < 0)? keyValue : keyValue.substr(0, i);

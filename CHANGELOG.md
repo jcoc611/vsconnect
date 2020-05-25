@@ -1,3 +1,17 @@
+<a name="v0.2.8"></a>
+## [v0.2.8](https://github.com/jcoc611/vsconnect/compare/v0.2.7...v0.2.8) (2020-05-24)
+
+### Features
+ - Added ability to resend previous requests
+ - Added ability to rerun all requests (resending them one after the other)
+ - Added a 'clear' button
+
+### Fixes
+ - Displays DNS Resource Record values as objects rather than strings.
+ - Better synchronization of `Content-Type` and body language
+ - Accessibility: Fixed context menu keyboard navigation
+ - Accessibility: Fixed tab navigation visualization
+
 <a name="v0.2.7"></a>
 ## [v0.2.7](https://github.com/jcoc611/vsconnect/compare/v0.2.6...v0.2.7) (2020-05-17)
 

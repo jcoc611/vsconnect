@@ -41,12 +41,17 @@ export class BytesBinaryInput extends AbstractItem<BytesValue> {
 
 export class BytesStringInput extends AbstractItem<BytesValue> {
 	private openInNewTab = () => {
-		if (this.props.openTextDocument) {
-			this.props.openTextDocument({
-				name: this.props.name,
-				language: '',
+		const { openTextDocument, name, readOnly, value } = this.props;
+		if (openTextDocument !== undefined) {
+			let language: string = '';
+			if (value.type === 'string' && value.languageHint !== undefined) {
+				language = value.languageHint;
+			}
+			openTextDocument({
+				name,
+				language,
 				content: this.valueActual(),
-				shouldSync: !this.props.readOnly
+				shouldSync: !readOnly
 			});
 		}
 	}

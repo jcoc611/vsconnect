@@ -4,6 +4,12 @@ import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActi
 import { DelegatedPromise, PromiseCancelledError } from "../utils/DelegatedPromise";
 import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
 import { DelegatedPromiseStore } from "../utils/DelegatedPromiseStore";
+import { LinkedList, LLNode } from "../utils/LinkedList";
+
+interface ITrackedDocument {
+	vizItem: IVisualizationItem<BytesValue>;
+	tId: number;
+}
 
 export class StateManager {
 	private static instance : StateManager | null;
@@ -17,14 +23,10 @@ export class StateManager {
 
 	private webviewId?: number;
 
-	changeListeners: Array<(newHistory: IVisualization[]) => void> = new Array();
-	private history: IVisualization[] = [];
+	private changeListeners: Array<(newHistory: IVisualization[]) => void> = new Array();
+	private history: LinkedList<IVisualization> = new LinkedList();
+	private tIdInHistory: { [key: number]: LLNode<IVisualization> } = {}; // TODO: { key: WeakRef }
 	private currentRequest?: IVisualization;
-
-	private reqInHistory: Map<number, number> = new Map();
-	private resInHistory: Map<number, number> = new Map();
-	private reqCount: number = 0;
-	private resCount: number = 0;
 
 	private lastProtocol: string = '';
 	private protocols?: string[];
@@ -33,16 +35,16 @@ export class StateManager {
 	private promiseStore: DelegatedPromiseStore = new DelegatedPromiseStore();
 	private uiHandlerPromiseId: { [handlerId: number]: number } = {};
 
-	private historyWalkCurrent: number = -1;
+	private historyWalkCurrent?: LLNode<IVisualization>;
 
-	private trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> } = {};
+	private trackedTextDocuments: { [key: number]: ITrackedDocument } = {};
 
 	private contextMenuContent?: ContextMenuContent;
 	private contextMenuLocation?: { top: number, left: number };
 
 	private responsePromise?: DelegatedPromise<void>;
 
-	private rerunQueue?: IVisualization[];
+	private rerunQueue?: LinkedList<IVisualization>;
 
 	private constructor() {
 		// @ts-ignore because function does not exist in dev environment
@@ -62,9 +64,12 @@ export class StateManager {
 					this.addResponse(message.action.params[0]);
 				} else if (message.action.type === ServiceActionTypes.TextDocumentChanged) {
 					const [ trackedDocId, contentNew ] = message.action.params;
-					let viz: IVisualizationItem<BytesValue> = this.trackedTextDocuments[trackedDocId];
-					viz.value = contentNew;
-					this.updateUI(viz, this.currentRequest!, true);
+					let doc: ITrackedDocument = this.trackedTextDocuments[trackedDocId];
+					// Viz is undefined if update was meant for different panel
+					if (doc !== undefined) {
+						doc.vizItem.value = contentNew;
+						this.updateUI(doc.vizItem, doc.tId, true);
+					}
 				} else if (message.action.type === ServiceActionTypes.TextDocumentClosed) {
 					const [ trackedDocId ] = message.action.params;
 					delete this.trackedTextDocuments[trackedDocId];
@@ -92,14 +97,12 @@ export class StateManager {
 		window.addEventListener('vsconnect:contextmenu:close', () => this.closeContextMenu());
 
 		document.addEventListener('keydown', (event) => {
-			if (event.key === 'ArrowUp' && this.historyWalkCurrent + 1 < this.reqCount) {
+			if (event.key === 'ArrowUp' && !this.hasContextMenu()) {
 				event.preventDefault();
-				this.historyWalkCurrent++;
-				this.duplicateFromHistory();
-			} else if (event.key === 'ArrowDown' && this.historyWalkCurrent >= 0) {
+				this.historyWalk('up');
+			} else if (event.key === 'ArrowDown' && !this.hasContextMenu()) {
 				event.preventDefault();
-				this.historyWalkCurrent--;
-				this.duplicateFromHistory();
+				this.historyWalk('down');
 			} else if (event.key === 'Escape') {
 				this.closeContextMenu();
 			}
@@ -112,23 +115,22 @@ export class StateManager {
 	toJSON() {
 		const {
 			webviewId,
-			history, currentRequest, reqInHistory, resInHistory, reqCount, resCount,
+			history, currentRequest,
 			lastProtocol, protocols,
 			trackedTextDocuments
 		} = this;
 
 		return encodeURI(JSON.stringify(<ConsoleViewState> {
 			webviewId,
-			history, currentRequest,
-			reqInHistory: Array.from(reqInHistory.entries()),
-			resInHistory: Array.from(resInHistory.entries()),
-			reqCount, resCount, lastProtocol, protocols,
-			trackedTextDocuments
+			history: history.toArray(),
+			currentRequest,
+			lastProtocol, protocols,
+			// trackedTextDocuments
 		}));
 	}
 
 	getHistory(): IVisualization[] {
-		return this.history;
+		return this.history.toArray();
 	}
 
 	onChange( callback: (newHistory: IVisualization[]) => void) {
@@ -160,18 +162,41 @@ export class StateManager {
 
 	// For React
 
-	async sendCurrentRequest() {
-		const currentRequest: IVisualization = this.getCurrentRequest();
+	async sendRequest(tId: number) {
+		let isCurrent: boolean = false;
+		let vizReq: IVisualization;
+		if (this.currentRequest !== undefined && this.currentRequest.transaction.id === tId) {
+			isCurrent = true;
+			vizReq = this.currentRequest;
+			this.addRequest(this.currentRequest);
+			this.currentRequest = undefined;
+			await this.addNewRequest();
+		} else if (this.tIdInHistory[tId] !== undefined) {
+			// Resend old request - delete all responses for it
+			vizReq = this.tIdInHistory[tId].value;
+			let nodeCur = this.tIdInHistory[tId].next;
+			while (nodeCur !== undefined && nodeCur.value.transaction.responseTo === tId) {
+				this.history.remove(nodeCur);
+				delete this.tIdInHistory[nodeCur.value.transaction.id!];
+				nodeCur = nodeCur.next;
+			}
+		} else {
+			return;
+		}
 
-		this.lastProtocol = currentRequest.transaction.protocolId;
-		this.historyWalkCurrent = -1;
-		this.addRequest(currentRequest);
-		this.currentRequest = undefined;
-		await this.addNewRequest();
+		this.lastProtocol = vizReq.transaction.protocolId;
+		this.historyWalkCurrent = undefined;
+		this.triggerChange();
+
 		await this.remoteCall({
 			type: ServiceActionTypes.DoTransaction,
-			params: [ currentRequest.transaction ]
+			params: [ vizReq.transaction ]
 		});
+
+		if (!isCurrent) {
+			// Recompute fn of all after
+			this.recomputeAllAfter(this.tIdInHistory[tId]);
+		}
 	}
 
 	async setProtocol(protocolId: string) {
@@ -185,7 +210,7 @@ export class StateManager {
 
 	async updateUI(
 		vizItemChanged: IVisualizationItem<any>,
-		vizCurrent: IVisualization,
+		tId: number,
 		fromTextDocument: boolean = false
 	): Promise<void> {
 		if (this.currentRequest === undefined) {
@@ -193,9 +218,39 @@ export class StateManager {
 		}
 
 		if (vizItemChanged.handlerId === -1) {
-			throw new Error('Ups should not do this');
+			throw new Error('Virtual UI has no handler, cannot process change for it.');
 		}
 
+		let isCurrent = (tId === this.currentRequest.transaction.id);
+		let vizCur: IVisualization = (isCurrent)? this.currentRequest : this.tIdInHistory[tId].value;
+
+		let vizNew: IVisualization | undefined = await this.handleUIChange(vizItemChanged, vizCur);
+		if (vizNew === undefined) {
+			return;
+		}
+
+		if (isCurrent) {
+			this.currentRequest = vizNew;
+		} else {
+			this.tIdInHistory[tId].value = vizNew;
+		}
+		this.triggerChange();
+
+		if (vizItemChanged.ui.type === UITypes.BytesString && !fromTextDocument) {
+			let docId = this.getTrackingDocId(vizNew.transaction.id!, vizItemChanged);
+			if (docId >= 0) {
+				this.remoteCall(<ServiceAction> {
+					type: ServiceActionTypes.TextDocumentChanged,
+					params: [docId, vizItemChanged.value]
+				});
+			}
+		}
+	}
+
+	private async handleUIChange(
+		vizItemChanged: IVisualizationItem<any>,
+		vizCur: IVisualization
+	): Promise<IVisualization | undefined> {
 		// Promise
 		// Cancels any pending updates to the same vizItem, to prevent staggering
 		if (this.uiHandlerPromiseId[vizItemChanged.handlerId] !== undefined) {
@@ -203,7 +258,7 @@ export class StateManager {
 		}
 		let vizNewPromise = this.remoteCall({
 			type: ServiceActionTypes.HandleVisualizationChange,
-			params: [vizItemChanged, vizCurrent]
+			params: [vizItemChanged, vizCur]
 		});
 		this.uiHandlerPromiseId[vizItemChanged.handlerId] = vizNewPromise.id;
 		let vizNew: IVisualization;
@@ -219,26 +274,15 @@ export class StateManager {
 		delete this.uiHandlerPromiseId[vizItemChanged.handlerId];
 		// Promise end
 
-		this.currentRequest = vizNew;
-		this.triggerChange();
-
-		if (vizItemChanged.ui.type === UITypes.BytesString && !fromTextDocument) {
-			let docId = this.isTrackingDoc(vizItemChanged);
-			if (docId >= 0) {
-				this.remoteCall(<ServiceAction> {
-					type: ServiceActionTypes.TextDocumentChanged,
-					params: [docId, vizItemChanged.value]
-				});
-			}
-		}
+		return vizNew;
 	}
 
-	async openTextDocument(textDoc: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) {
+	async openTextDocument(textDoc: OpenTextDocumentOptions, tId: number, vizItem: IVisualizationItem<BytesValue>) {
 		let textDocId: number = await this.remoteCall({
 			type: ServiceActionTypes.OpenTextDocument,
 			params: [textDoc]
 		});
-		this.trackedTextDocuments[textDocId] = viz;
+		this.trackedTextDocuments[textDocId] = { vizItem, tId };
 	}
 
 	async getFunctionPreview(command: string): Promise<IVisualizationItem<any> | null> {
@@ -251,49 +295,58 @@ export class StateManager {
 	async rerun() {
 		// 1) Prepare
 		// 	- All outgoing items in history are moved to rerun queue
-		let rerunQueueNew: IVisualization[] = [];
-		for (let item of this.history) {
-			if (item.context === 'outgoing') {
-				rerunQueueNew.push(item);
+		if (this.rerunQueue === undefined) {
+			this.rerunQueue = new LinkedList<IVisualization>();
+		}
+
+		for (let node of this.history.nodesReversed()) {
+			if (node.value.context === 'outgoing') {
+				this.rerunQueue.prependN(node);
 			}
 		}
-		if (this.rerunQueue !== undefined) {
-			rerunQueueNew.concat(this.rerunQueue);
-		}
-		this.rerunQueue = rerunQueueNew;
 
-		this.history = [];
-		this.reqInHistory = new Map();
-		this.resInHistory = new Map();
-		this.reqCount = 0;
-		this.resCount = 0;
+		this.tIdInHistory = {};
+		this.historyWalkCurrent = undefined;
+		this.history.clear();
 		this.triggerChange();
 
-		// 	- Sandbox is cleared
-		await this.remoteCall({
-			type: ServiceActionTypes.ClearSandbox,
-			params: []
-		});
+		await this.clearSandbox();
 
 		// 2) for every req:
-		while (this.rerunQueue!.length > 0) {
+		while (!this.rerunQueue!.isEmpty()) {
 			// 	a) reviz & recompute valueFunction_s (vizCur -> tCur -> tNew -> vizNew)
-			let item: IVisualization = this.rerunQueue.shift()!; // TODO: replace with more efficient data structure
+			let item: IVisualization = this.rerunQueue.popFirst()!;
 			item = await this.revisualize(item);
 			item = await this.recomputeFunctions(item);
 			this.currentRequest = item;
 
 			// 	b) send req, remove req from queue
 			this.responsePromise = new DelegatedPromise(0);
-			await this.sendCurrentRequest();
+			await this.sendRequest(item.transaction.id!);
 
 			// 	c) await res
 			await this.responsePromise;
 		}
+
+		this.rerunQueue = undefined;
+		this.triggerChange();
+	}
+
+	clear(): void {
+		this.history.clear();
+		this.tIdInHistory = {};
+		this.historyWalkCurrent = undefined;
+		this.currentRequest = undefined;
+		this.rerunQueue = undefined;
+		this.addNewRequest();
+		this.clearSandbox();
 	}
 
 	getRerunQueue(): IVisualization[] | undefined {
-		return this.rerunQueue;
+		if (this.rerunQueue === undefined)
+			return;
+
+		return this.rerunQueue.toArray();
 	}
 
 	// context menus
@@ -321,6 +374,7 @@ export class StateManager {
 		this.currentRequest = {
 			context: 'outgoing',
 			transaction: {
+				id: -1,
 				protocolId: '',
 				state: ITransactionState.Dummy,
 				shortStatus: '',
@@ -352,28 +406,33 @@ export class StateManager {
 		});
 	}
 
-	private addRequest(v: IVisualization): number {
-		this.reqInHistory.set(this.reqCount, this.history.length);
-		this.history.push(v);
-		this.reqCount++;
-
-		// this.triggerChange();
-
-		return this.reqCount;
+	private addRequest(v: IVisualization): void {
+		this.history.append(v);
+		this.tIdInHistory[v.transaction.id!] = this.history.getLastN()!;
 	}
 
-	private addResponse(v: IVisualization): number {
-		this.resInHistory.set(this.resCount, this.history.length);
-		this.history.push(v);
-		this.resCount++;
+	private addResponse(v: IVisualization): void {
+		let tResponseTo = v.transaction.responseTo;
+		if (tResponseTo !== undefined && this.tIdInHistory[tResponseTo]) {
+			// Starting with the request, place new response after all existing responses for that
+			// request.
+			let nodeCur = this.tIdInHistory[tResponseTo];
+			while (nodeCur.next !== undefined && nodeCur.next!.value.context === 'incoming') {
+				nodeCur = nodeCur.next;
+			}
+			this.history.insertAfter(nodeCur, v);
+			this.tIdInHistory[v.transaction.id!] = nodeCur.next!;
+			this.recomputeAllAfter(nodeCur.next!);
+		} else {
+			this.history.append(v);
+			this.tIdInHistory[v.transaction.id!] = this.history.getLastN()!;
+		}
 
 		if (this.responsePromise !== undefined) {
 			this.responsePromise.fulfill();
 		}
 
 		this.triggerChange();
-
-		return this.resCount;
 	}
 
 	private async revisualize(viz: IVisualization): Promise<IVisualization> {
@@ -383,13 +442,49 @@ export class StateManager {
 		});
 	}
 
+	private recomputeAllAfter(node: LLNode<IVisualization>): void {
+		if (node === undefined) {
+			return;
+		}
+
+		let nodeCur = node.next;
+		while (nodeCur !== undefined) {
+			if (nodeCur.value.context === 'outgoing') {
+				this.recomputeInHistory(nodeCur);
+			}
+			nodeCur = nodeCur.next;
+		}
+
+		this.recomputeCurrentRequest();
+	}
+
+	private recomputeInHistory(node: LLNode<IVisualization>): void {
+		this.recomputeFunctions(node.value).then((valueNew) => {
+			node.value = valueNew;
+			this.triggerChange();
+		});
+	}
+
+	private recomputeCurrentRequest(): void {
+		if (this.currentRequest === undefined)
+			return;
+		this.recomputeFunctions(this.currentRequest).then((valueNew) => {
+			this.currentRequest = valueNew;
+			this.triggerChange();
+		});
+	}
+
 	private async recomputeFunctions(viz: IVisualization): Promise<IVisualization> {
 		for (let item of viz.items) {
 			if (item.valueFunction !== undefined) {
 				// TODO: what happens if recomputeFunction returns wrongly-typed thing?
 				item.value = await this.recomputeFunction(item.valueFunction, item.value);
+
+				// Treat recompute as a UI change so the right thing happens for other visualizations
+				viz = (await this.handleUIChange(item, viz))!;
 			}
 		}
+
 		return viz;
 	}
 
@@ -423,6 +518,13 @@ export class StateManager {
 		return null;
 	}
 
+	private async clearSandbox(): Promise<void> {
+		await this.remoteCall({
+			type: ServiceActionTypes.ClearSandbox,
+			params: []
+		});
+	}
+
 	// TODO: response always immutable?
 	// private updateResponse( resIndex: number, newViz: IVisualization ) {
 	// 	...
@@ -449,11 +551,12 @@ export class StateManager {
 		}
 	}
 
-	private isTrackingDoc(viz: IVisualizationItem<any>): number {
+	private getTrackingDocId(tId: number, vizItem: IVisualizationItem<any>): number {
 		for (let docId of Object.keys(this.trackedTextDocuments)) {
-			let vizTracked = this.trackedTextDocuments[Number(docId)];
-			if (vizTracked.handlerId == viz.handlerId && vizTracked.ui.name === viz.ui.name)
+			let doc = this.trackedTextDocuments[Number(docId)];
+			if (doc.tId === tId && doc.vizItem.handlerId == vizItem.handlerId) {
 				return Number(docId);
+			}
 		}
 
 		return -1;
@@ -464,15 +567,11 @@ export class StateManager {
 		if (prevStateEncoded) {
 			let prevState: ConsoleViewState = JSON.parse(decodeURI(prevStateEncoded));
 			this.webviewId = prevState.webviewId;
-			this.history = prevState.history;
+			this.history = LinkedList.fromCollection(prevState.history);
 			this.currentRequest = prevState.currentRequest;
-			this.reqInHistory = new Map(prevState.reqInHistory);
-			this.resInHistory = new Map(prevState.resInHistory);
-			this.reqCount = prevState.reqCount;
-			this.resCount = prevState.resCount;
 			this.lastProtocol = prevState.lastProtocol;
 			this.protocols = prevState.protocols;
-			this.trackedTextDocuments = prevState.trackedTextDocuments;
+			// this.trackedTextDocuments = prevState.trackedTextDocuments;
 
 			this.triggerChange();
 			return true;
@@ -480,15 +579,40 @@ export class StateManager {
 		return false;
 	}
 
-	private duplicateFromHistory(): void {
-		if (this.historyWalkCurrent < 0) {
+	private historyWalk(direction: 'up' | 'down'): void {
+		if (this.historyWalkCurrent === undefined) {
+			if (direction == 'down') {
+				return;
+			} else {
+				this.historyWalkCurrent = this.history.getLastN();
+				while (this.historyWalkCurrent !== undefined && this.historyWalkCurrent.value.context === 'incoming') {
+					this.historyWalkCurrent = this.historyWalkCurrent.prev;
+				}
+
+				// Sanity check here
+				if (this.historyWalkCurrent === undefined) {
+					return;
+				}
+			}
+		} else if (direction == 'down') {
+			this.historyWalkCurrent = this.historyWalkCurrent.next;
+			while (this.historyWalkCurrent !== undefined && this.historyWalkCurrent.value.context === 'incoming') {
+				this.historyWalkCurrent = this.historyWalkCurrent.next;
+			}
+		} else {
+			this.historyWalkCurrent = this.historyWalkCurrent.prev;
+			while (this.historyWalkCurrent !== undefined && this.historyWalkCurrent.value.context === 'incoming') {
+				this.historyWalkCurrent = this.historyWalkCurrent.prev;
+			}
+		}
+
+		if (this.historyWalkCurrent === undefined) {
 			this.addNewRequest();
 			return;
 		}
 
-		let reqIndex = this.reqCount - this.historyWalkCurrent - 1;
 		this.currentRequest = Object.assign(
-			{}, this.history[this.reqInHistory.get(reqIndex)!]
+			{}, this.historyWalkCurrent.value
 		);
 		this.triggerChange();
 
@@ -496,6 +620,6 @@ export class StateManager {
 		this.revisualize(this.currentRequest).then((vizNew) => {
 			this.currentRequest = vizNew;
 			this.triggerChange();
-		})
+		});
 	}
 }

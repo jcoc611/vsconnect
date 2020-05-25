@@ -233,7 +233,7 @@ class VSConnectPanel {
 			<link rel="stylesheet" href="${styleUri}" />
 		</head>
 		<body>
-			<header></header>
+			<header id="topBar-wrapper"></header>
 			<div id="content-wrapper"></div>
 			<div id="contextmenu-wrapper" style="display:none"></div>
 			<script nonce="${nonce}" src="${scriptUri}"></script>

@@ -6,11 +6,21 @@ button {
 	font-family: var(--vscode-font-family);
 	background-color: var(--vscode-button-background);
 	color: var(--vscode-button-foreground);
-	border: 1px solid var(--vscode-button-hoverbackground);
+	/* border: 1px solid var(--vscode-button-hoverbackground); */
+	border: 0;
 	outline:0;
 	border-radius: 2px;
 	padding: 4px 8px;
 	-webkit-user-select: none;
+}
+
+button:focus {
+	/** accesibility */
+	border: 1px solid var(--vscode-terminal-ansiBrightBlue) !important;
+}
+
+button:hover, button:focus {
+	background-color: var(--vscode-button-hoverBackground);
 }
 
 button.btn-default {
@@ -366,6 +376,32 @@ textarea {
 	color: var(--vscode-list-hoverForeground);
 }
 
+/** Content */
+#content-wrapper {
+	padding-top: 20px;
+}
+
+/** Top Bar */
+#topBar-wrapper {
+	position: fixed;
+	display: block;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	background-color: var(--vscode-titleBar-activeBackground);
+	color: var(--vscode-titleBar-activeForeground);
+	box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+	z-index: 99999999999;
+}
+
+#topBar-wrapper button {
+	background-color: var(--vscode-titleBar-activeBackground);
+	color: var(--vscode-titleBar-activeForeground);
+}
+
+#topBar-wrapper button:hover, #topBar-wrapper button:focus {
+	filter: brightness(1.5);
+}
 
 /** dropdown */
 .dropdown-root {
@@ -521,6 +557,10 @@ textarea {
 	cursor: pointer;
 }
 
+.oneOfMany-options label:focus-within {
+	border: 1px solid var(--vscode-terminal-ansiBrightBlue) !important;
+}
+
 .oneOfMany-options label input {
 	vertical-align: bottom;
 }
@@ -551,6 +591,11 @@ div.form .form-item > span.form-item-label {
 }
 
 #contextmenu-wrapper .menu-item {
+	display: block;
+	text-align: left;
+	background-color: transparent;
+	border: none;
+	border-radius: 0;
 	padding: 4px 25px;
 	font-size: 1em;
 	user-select: none;
@@ -560,7 +605,7 @@ div.form .form-item > span.form-item-label {
 	float: right;
 }
 
-#contextmenu-wrapper .menu-item:hover {
+#contextmenu-wrapper .menu-item:hover, #contextmenu-wrapper .menu-item.active {
 	background-color: var(--vscode-menu-selectionBackground);
 	color: var(--vscode-menu-selectionForeground);
 }

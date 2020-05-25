@@ -10,15 +10,17 @@ import { Dropdown } from './visualizationItems/Dropdown';
 interface TransactionProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
-	updateUI: (vizItem: IVisualizationItem<any>, vizCurrent: IVisualization) => void;
-	openTextDocument: (docOptions: OpenTextDocumentOptions, viz: IVisualizationItem<BytesValue>) => void;
+	updateUI: (vizItem: IVisualizationItem<any>) => void;
+	openTextDocument: (docOptions: OpenTextDocumentOptions, vizItem: IVisualizationItem<BytesValue>) => void;
 	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
 
 	allProtocols: string[];
 
 	visualization: IVisualization;
 	readOnly: boolean;
+	isCurrent: boolean;
 	index: number;
+	key: number;
 }
 
 interface TransactionContentProps {
@@ -84,7 +86,9 @@ class TransactionContent extends React.Component<TransactionContentProps, Transa
 		if (item.ui.count)
 			count = <span className='count'>{item.ui.count}</span>;
 
-		return <button onClick={() => this.setOpenTab(item.ui.name)} key={`tab-${item.ui.name}`}
+		return <button  key={`tab-${item.ui.name}`}
+			onClick={() => this.setOpenTab(item.ui.name)}
+			onMouseDown={(e) => e.preventDefault()}
 			className={(this.state.openTab === item.ui.name)? 'selected': ''}>{item.ui.name}{count}</button>;
 	}
 
@@ -139,8 +143,8 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		super(props);
 
 		this.state = {
-			// expanded by default unless it is a sent outgoing message
-			isExpanded: !(props.visualization.context === 'outgoing' && props.readOnly),
+			// TODO: persist expanded in viz
+			isExpanded: true,
 		};
 	}
 
@@ -155,12 +159,13 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		const {
 			visualization,
 			readOnly,
+			updateUI,
 			openTextDocument,
 			getFunctionPreview
 		} = this.props;
 
 		let itemElement = <VisualizationItem
-			item={item} readOnly={readOnly} onChange={this.handleUIChange}
+			item={item} readOnly={readOnly} onChange={updateUI}
 			openTextDocument={openTextDocument}
 			getFunctionPreview={getFunctionPreview} />;
 		if (visualization.context === 'incoming') {
@@ -181,10 +186,6 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		}
 	}
 
-	handleUIChange = (viz: IVisualizationItem<any>): void => {
-		this.props.updateUI(viz, this.props.visualization);
-	}
-
 	renderShortTabPreview = (item: IVisualizationItem<any>): JSX.Element => (
 		<span className='shortItem' key={item.ui.name}>
 			<span className='shortItem-name'>{item.ui.name}</span>
@@ -195,8 +196,8 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 	render() {
 		const { isExpanded } = this.state;
 		const {
-			visualization, index, readOnly, allProtocols,
-			setProtocol, sendCurrentRequest, openTextDocument, getFunctionPreview
+			visualization, index, readOnly, isCurrent, allProtocols,
+			updateUI, setProtocol, sendCurrentRequest, openTextDocument, getFunctionPreview
 		} = this.props;
 		const type = (visualization.context === 'incoming')? 'res': 'req';
 
@@ -207,7 +208,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			short.push(<Dropdown name='Protocol' key='Protocol'
 				location={'short'}
 				value={visualization.transaction.protocolId}
-				allowedValues={allProtocols} readOnly={readOnly} onChange={setProtocol}
+				allowedValues={allProtocols} readOnly={!isCurrent} onChange={setProtocol}
 				getFunctionPreview={getFunctionPreview} />);
 		} else {
 			short.push(<span className='protocol' key='Protocol'>
@@ -223,7 +224,10 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		}
 
 		if (!readOnly) {
-			short.push(<button onClick={sendCurrentRequest} key='send'>send</button>);
+			if (isCurrent)
+				short.push(<button className='btn-primary' onClick={sendCurrentRequest} key='send'>send</button>);
+			else
+				short.push(<button onClick={sendCurrentRequest} key='resend'>resend</button>);
 		}
 
 		if (!isExpanded && type === 'res') {
@@ -236,7 +240,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			'is-error': (visualization.transaction.state === ITransactionState.Error),
 			'is-pending': (visualization.transaction.state === ITransactionState.Pending),
 			'is-success': (visualization.transaction.state === ITransactionState.Sent),
-			'is-current': !readOnly
+			'is-current': isCurrent,
 		});
 
 		return <div className={resClasses}>
@@ -246,10 +250,10 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			<div className='wrapper'>
 				<div className='consoleLine'>{short}</div>
 				{(isExpanded)?
-					<TransactionContent 
+					<TransactionContent
 						itemsExtra={itemsExtra} visualization={visualization}
 						readOnly={readOnly}
-						handleUIChange={this.handleUIChange}
+						handleUIChange={updateUI}
 						getFunctionPreview={getFunctionPreview}
 						openTextDocument={openTextDocument} />
 					: null

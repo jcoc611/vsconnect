@@ -12,6 +12,7 @@ import { BodyUtils } from "./utils/BodyUtils";
 import { MultipartValue } from "./components/BodyMultipart";
 import { objToHeaderValues, hasHeaderValue, getHeaderValue } from './utils/HeaderUtils';
 import { Formats } from '../../utils/Formats';
+import { StringFormats } from './utils/StringFormats';
 
 interface TLSComponentValue {
 	enabled: boolean;
@@ -20,8 +21,8 @@ interface TLSComponentValue {
 // v0.2.5 -> moved from 'request' to the client below to reduce dependencies and simplify
 
 export class HTTPClient {
-	static async request(t: ITransaction): Promise<ITransaction> {
-		let headers = getComponent<KeyValues<string>>(t, 'headers', []);
+	static async request(tReq: ITransaction): Promise<ITransaction> {
+		let headers = getComponent<KeyValues<string>>(tReq, 'headers', []);
 
 		let headersObj: { [key: string]: string | string[] } = {};
 		for (let [hKey, hValue] of headers) {
@@ -38,16 +39,16 @@ export class HTTPClient {
 		}
 
 		// TODO validation
-		let hostComponent: string = getComponent<string>(t, 'host');
+		let hostComponent: string = getComponent<string>(tReq, 'host');
 		let [_, hostScheme, host, path] = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(hostComponent)!;
 		if (hostScheme === undefined) {
-			hostScheme = (getComponent<TLSComponentValue>(t, 'tls').enabled)? 'https://' : 'http://';
+			hostScheme = (getComponent<TLSComponentValue>(tReq, 'tls').enabled)? 'https://' : 'http://';
 		}
 
-		let body = getBinaryComponentValue(t, 'body');
-		if (body === '' && hasComponent(t, 'extra:body-multipart')) {
+		let body = getBinaryComponentValue(tReq, 'body');
+		if (body === '' && hasComponent(tReq, 'extra:body-multipart')) {
 			let formData = BodyUtils.multipartFormData(
-				getComponent<MultipartValue>(t, 'extra:body-multipart')
+				getComponent<MultipartValue>(tReq, 'extra:body-multipart')
 			);
 			body = formData.getBuffer();
 			headersObj['Content-Type'] = formData.getHeaders()['content-type'];
@@ -71,8 +72,8 @@ export class HTTPClient {
 			*/
 			let reqOptions: http.RequestOptions & https.RequestOptions = {
 				host,
-				method: getComponent<string>(t, 'verb'),
-				path: getComponent<string>(t, 'path'),
+				method: getComponent<string>(tReq, 'verb'),
+				path: getComponent<string>(tReq, 'path'),
 				headers: headersObj,
 			};
 			let req: http.ClientRequest;
@@ -94,7 +95,13 @@ export class HTTPClient {
 					} else {
 						state = ITransactionState.Sent;
 					}
+					let languageHint;
+					if (res.headers['content-type'] !== undefined){
+						languageHint = StringFormats.mimeFromContentType(res.headers['content-type']);
+					}
+
 					let tRes: ITransaction = {
+						responseTo: tReq.id,
 						protocolId: 'HTTP',
 						state,
 						shortStatus: `${res.statusCode} ${res.statusMessage}`,
@@ -103,7 +110,8 @@ export class HTTPClient {
 							// TODO: this should be type 'file' if non text?
 							body: <BytesValue> {
 								type: 'string',
-								rawValue: bodyNormalized
+								rawValue: bodyNormalized,
+								languageHint,
 							},
 							headers: headerKV,
 							duration: Formats.hrToString(timingEnd),
