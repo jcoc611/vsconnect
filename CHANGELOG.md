@@ -1,3 +1,15 @@
+<a name="v0.2.9"></a>
+## [v0.2.9](https://github.com/jcoc611/vsconnect/compare/v0.2.8...v0.2.9) (2020-05-31)
+
+### Fixes
+ - Context Menu positioning was wrong when scrolling
+ - Updated response boolean short values to be more consistent with rest of UI
+ - Changing the language type on a text editor now updates `Content-Type` and underlying language
+ - Fixed key bindings for history navigation (up/down arrows)
+ - Changed "send request" key bindings to CTRL + Enter to prevent issues in text areas, etc.
+ - Store contents are preserved across VS Code restarts (e.g. cookies).
+
+
 <a name="v0.2.8"></a>
 ## [v0.2.8](https://github.com/jcoc611/vsconnect/compare/v0.2.7...v0.2.8) (2020-05-24)
 
