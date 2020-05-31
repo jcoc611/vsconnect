@@ -52,4 +52,78 @@ export class Formats {
 		else
 			return `${(byteCount / (1 << 40)).toFixed(2)} TB`;
 	}
+
+	static languageIdToMime(languageId: string): string {
+		switch (languageId) {
+		//"abap"
+		//"bat"
+		//"bibtex"
+		//"clojure"
+		//"coffeescript"
+		//"c"
+		//"cpp"
+		//"csharp"
+		//"css"
+			case 'css':
+				return 'text/css';
+		//"diff"
+		//"dockerfile"
+		//"fsharp"
+		//"git-commit"
+		//"git-rebase"
+		//"go"
+		//"groovy"
+		//"handlebars"
+		//"html"
+			case 'html':
+				return 'text/html';
+		//"ini"
+		//"java"
+		//"javascript"
+			case 'javascript':
+				return 'text/javascript';
+		//"javascriptreact"
+		//"json"
+			case 'json':
+				return 'application/json';
+		//"jsonc"
+		//"latex"
+		//"less"
+		//"lua"
+		//"makefile"
+		//"markdown"
+		//"objective-c"
+		//"objective-cpp"
+		//"perl"
+		//"perl6"
+		//"php"
+		//"plaintext"
+			case 'plaintext':
+				return 'text/plain';
+		//"powershell"
+		//"jade"
+		//"python"
+		//"r"
+		//"razor"
+		//"ruby"
+		//"rust"
+		//"scss"
+		//"sass"
+		//"shaderlab"
+		//"shellscript"
+		//"sql"
+		//"swift"
+		//"typescript"
+		//"typescriptreact"
+		//"tex"
+		//"vb"
+		//"xml"
+			case 'xml':
+				return 'application/xml';
+		//"xsl"
+		//"yaml"
+			default:
+				return 'text/plain';
+		}
+	}
 }

@@ -20,24 +20,6 @@ interface ConsoleSurfaceProps {
 }
 
 export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
-	componentDidMount() {
-		document.addEventListener('keypress', (e) => {
-			if (e.target && e.target instanceof Element) {
-				let target: Element = e.target;
-
-				// TODO this logic is hardcoded and may be wrong. Currently, every keypress
-				// on an element other than a text area will trigger key bindings.
-				if (target.nodeName === 'TEXTAREA' || target.nodeName === 'BUTTON') {
-					return;
-				}
-			}
-
-			if (e.key === 'Enter') {
-				this.props.sendRequest(this.props.currentRequest.transaction.id!);
-			}
-		});
-	}
-
 	cbOpenTextDocument = (viz: IVisualization): ((docOptions: OpenTextDocumentOptions, vizItem: IVisualizationItem<BytesValue>) => void) => {
 		return (
 			docOptions: OpenTextDocumentOptions,

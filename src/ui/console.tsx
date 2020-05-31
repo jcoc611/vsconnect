@@ -26,12 +26,14 @@ state.getAllProtocols().then( (protocols) => {
 				clear={ state.clear.bind(state) } />,
 			document.getElementById("content-wrapper")
 		);
-		window.scrollTo(0,document.body.scrollHeight);
+		// window.scrollTo(0,document.body.scrollHeight);
 
 		ReactDOM.render(
 			<div className="topBar">
 				<button onClick={ state.rerun.bind(state) } title='Resend every request one after the other'>🔄 Rerun</button>
 				<button onClick={ state.clear.bind(state) } title='Delete everything in this tab'>🗑️ Clear</button>
+				<a href='https://github.com/jcoc611/vsconnect/issues/new' className='btn'
+					style={ ({ float: 'right' }) } title='Share some feedback on VSConnect online!'>💬 Feedback</a>
 			</div>,
 			document.getElementById("topBar-wrapper")
 		);

@@ -1,7 +1,7 @@
 'use strict';
 
-import { Store, StoreItem } from "../../../stores/Store";
-import { ITransaction, IContext } from "../../../interfaces";
+import { Store } from "../../../stores/Store";
+import { ITransaction, IContext, IStoreItem, IStoreMetadata } from "../../../interfaces";
 import { setKeyValueComponent, getComponent, getKeyValueComponent, getKeyValueComponents, deleteKeyValueComponent, hasComponent } from "../../../utils/transactionTools";
 import { StringFormats } from "../utils/StringFormats";
 
@@ -17,11 +17,17 @@ export interface CookieItem {
 }
 
 export class CookieStore extends Store<CookieItem> {
+	public getMetadata(): IStoreMetadata {
+		return {
+			name: 'Cookies',
+		};
+	}
+
 	public shouldProcess(t: ITransaction, context: IContext): boolean {
 		return hasComponent(t, 'headers');
 	}
 
-	public areItemsEqual(item1: StoreItem<CookieItem>, item2: StoreItem<CookieItem>): boolean {
+	public areItemsEqual(item1: IStoreItem<CookieItem>, item2: IStoreItem<CookieItem>): boolean {
 		if (item1.data.name !== item2.data.name)
 			return false;
 
@@ -31,7 +37,7 @@ export class CookieStore extends Store<CookieItem> {
 		return true;
 	}
 
-	public matchesKey(key: string, item: StoreItem<CookieItem>): boolean {
+	public matchesKey(key: string, item: IStoreItem<CookieItem>): boolean {
 		if (key === '')
 			return false;
 
@@ -60,7 +66,7 @@ export class CookieStore extends Store<CookieItem> {
 		return this.getDomainFromHost(getComponent<string>(t, 'host')) + getComponent<string>(t, 'path', '');
 	}
 
-	public getStoreItemsFromTransaction(t: ITransaction, context: IContext): StoreItem<CookieItem>[] {
+	public getStoreItemsFromTransaction(t: ITransaction, context: IContext): IStoreItem<CookieItem>[] {
 		if (context === 'incoming') {
 			// Set-Cookie: <cookie-name>=<cookie-value>; Domain=<domain-value>; Secure; HttpOnly
 			let setCookies: string[] = getKeyValueComponents<string>(t, 'headers', 'set-cookie');
@@ -71,7 +77,7 @@ export class CookieStore extends Store<CookieItem> {
 			let cookieHeader = getKeyValueComponent<string>(t, 'headers', 'cookie', '');
 			let keyDomain = this.getDomainFromHost(getComponent<string>(t, 'host'));
 			return StringFormats.parseCookieHeader(cookieHeader).map(([key, value]) => {
-				let storeItem: StoreItem<CookieItem> = {
+				let storeItem: IStoreItem<CookieItem> = {
 					ttlSec: Number.POSITIVE_INFINITY,
 					timestampSec: (new Date()).getTime() / 1000,
 
@@ -90,7 +96,7 @@ export class CookieStore extends Store<CookieItem> {
 		}
 	}
 
-	public getTransactionFromStoreItems(items: StoreItem<CookieItem>[], tCur: ITransaction): ITransaction {
+	public getTransactionFromStoreItems(items: IStoreItem<CookieItem>[], tCur: ITransaction): ITransaction {
 		if (items.length === 0) {
 			return deleteKeyValueComponent(tCur, 'headers', 'cookie');
 		}

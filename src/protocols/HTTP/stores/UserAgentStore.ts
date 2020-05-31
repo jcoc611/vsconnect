@@ -1,7 +1,7 @@
 'use strict';
 
-import { Store, StoreItem } from "../../../stores/Store";
-import { ITransaction, IContext } from "../../../interfaces";
+import { Store } from "../../../stores/Store";
+import { ITransaction, IContext, IStoreItem, IStoreMetadata } from "../../../interfaces";
 import { setKeyValueComponent, getKeyValueComponent, hasComponent } from "../../../utils/transactionTools";
 
 /**
@@ -9,16 +9,22 @@ import { setKeyValueComponent, getKeyValueComponent, hasComponent } from "../../
  * The user can change the User Agent on any outgoing request, and it will be remembered.
  */
 export class UserAgentStore extends Store<string> {
+	public getMetadata(): IStoreMetadata {
+		return {
+			name: 'User Agent',
+		};
+	}
+
 	public shouldProcess(t: ITransaction, context: IContext): boolean {
 		return context === 'outgoing' && hasComponent(t, 'headers');
 	}
 
-	public areItemsEqual(item1: StoreItem<string>, item2: StoreItem<string>): boolean {
+	public areItemsEqual(item1: IStoreItem<string>, item2: IStoreItem<string>): boolean {
 		// TODO
 		return true;
 	}
 
-	public matchesKey(key: string, item: StoreItem<string>): boolean {
+	public matchesKey(key: string, item: IStoreItem<string>): boolean {
 		return true;
 	}
 
@@ -27,7 +33,7 @@ export class UserAgentStore extends Store<string> {
 		return '';
 	}
 
-	public getStoreItemsFromTransaction(t: ITransaction, context: IContext): StoreItem<string>[] {
+	public getStoreItemsFromTransaction(t: ITransaction, context: IContext): IStoreItem<string>[] {
 		if (context === 'incoming') {
 			return [];
 		} else {
@@ -35,7 +41,7 @@ export class UserAgentStore extends Store<string> {
 			if (userAgent === '')
 				return [];
 
-			let storeItem: StoreItem<string> = {
+			let storeItem: IStoreItem<string> = {
 				ttlSec: Number.POSITIVE_INFINITY,
 				timestampSec: (new Date()).getTime() / 1000,
 
@@ -45,7 +51,7 @@ export class UserAgentStore extends Store<string> {
 		}
 	}
 
-	public getTransactionFromStoreItems(items: StoreItem<string>[], tCur: ITransaction): ITransaction {
+	public getTransactionFromStoreItems(items: IStoreItem<string>[], tCur: ITransaction): ITransaction {
 		if (items.length === 0) {
 			return tCur;
 		}

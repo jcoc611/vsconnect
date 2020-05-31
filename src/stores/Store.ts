@@ -1,31 +1,25 @@
 'use strict';
 
-import { ITransaction, IContext } from "../interfaces";
+import { ITransaction, IContext, IStoreItem, IStoreMetadata } from "../interfaces";
+import { StoreDatabase } from "./StoreDatabase";
 
-export interface StoreItemOptions {
-	key?: string;
-	ttlSec?: number;
-	context?: 'editor' | 'workbench' | 'vscode';
-}
-
-export interface StoreItem<T> {
-	data: T;
-	// key: string | null;
-	ttlSec?: number;
-	timestampSec: number;
-}
 
 export abstract class Store<T> {
-	private items: StoreItem<T>[] = [];
+	private db?: StoreDatabase;
 
+	public abstract getMetadata(): IStoreMetadata;
 	public abstract shouldProcess(t: ITransaction, context: IContext): boolean;
-	public abstract matchesKey(key: string, item: StoreItem<T>): boolean;
-	public abstract areItemsEqual(item1: StoreItem<T>, item2: StoreItem<T>): boolean;
+	public abstract matchesKey(key: string, item: IStoreItem<T>): boolean;
+	public abstract areItemsEqual(item1: IStoreItem<T>, item2: IStoreItem<T>): boolean;
 	public abstract getKeyFilterFromTransaction(t: ITransaction): string;
-	public abstract getStoreItemsFromTransaction(t: ITransaction, context: IContext): StoreItem<T>[];
-	public abstract getTransactionFromStoreItems(items: StoreItem<T>[], tCur: ITransaction): ITransaction;
+	public abstract getStoreItemsFromTransaction(t: ITransaction, context: IContext): IStoreItem<T>[];
+	public abstract getTransactionFromStoreItems(items: IStoreItem<T>[], tCur: ITransaction): ITransaction;
 
 	// Wired to Services.ts
+	public setDb(db: StoreDatabase): void {
+		this.db = db;
+	}
+
 	public didReceiveResponse(tRes: ITransaction) {
 		let storeItems = this.getStoreItemsFromTransaction(tRes, 'incoming');
 		if (storeItems.length > 0) {
@@ -46,7 +40,7 @@ export abstract class Store<T> {
 
 		if (keyOld === keyNew) {
 			this.removeItemsWithKey(keyNew);
-			let itemsNew: StoreItem<T>[] = this.getStoreItemsFromTransaction(tNew, 'outgoing');
+			let itemsNew: IStoreItem<T>[] = this.getStoreItemsFromTransaction(tNew, 'outgoing');
 			for (let itemNew of itemsNew) {
 				this.insertItem(itemNew);
 			}
@@ -57,40 +51,63 @@ export abstract class Store<T> {
 		}
 	}
 
-
-	protected upsertItems(itemsNew: StoreItem<T>[]): void {
+	protected upsertItems(itemsNew: IStoreItem<T>[]): void {
 		for (let itemNew of itemsNew) {
 			this.upsertItem(itemNew);
 		}
 	}
 
-	protected upsertItem(itemNew: StoreItem<T>): void {
-		for (let i = 0; i < this.items.length; i++) {
-			let itemCur: StoreItem<T> = this.items[i];
+	protected upsertItem(itemNew: IStoreItem<T>): void {
+		if (this.db === undefined) {
+			throw new Error('Unexpected: store.upsertItem(...) called before db was set');
+		}
+
+		let storeId = this.getMetadata().name;
+		let items = this.db.getItems(storeId);
+		for (let i = 0; i < items.length; i++) {
+			let itemCur: IStoreItem<T> = items[i];
 			if (this.areItemsEqual(itemCur, itemNew)) {
 				// Update
-				this.items[i] = itemNew;
+				items[i] = itemNew;
 				return;
 			}
 		}
 
 		// Insert
-		this.items.push(itemNew);
+		this.db.addItem(storeId, itemNew);
 	}
 
-	protected insertItem(item: StoreItem<T>): void {
-		this.items.push(item);
+	protected insertItem(item: IStoreItem<T>): void {
+		if (this.db === undefined) {
+			throw new Error('Unexpected: store.insertItem(...) called before db was set');
+		}
+
+		this.db.addItem(this.getMetadata().name, item);
 	}
 
 	protected removeItemsWithKey(key: string): void {
-		this.items = this.items.filter((item) => !this.matchesKey(key, item));
+		if (this.db === undefined) {
+			throw new Error('Unexpected: store.removeItemsWithKey(...) called before db was set');
+		}
+
+		let storeId = this.getMetadata().name;
+		let items = this.db.getItems(storeId);
+		this.db.setItems(
+			storeId,
+			items.filter((item) => !this.matchesKey(key, item))
+		);
 	}
 
-	protected getItems(keyFilter?: string): StoreItem<T>[] {
-		let itemsResult: StoreItem<T>[] = [];
+	protected getItems(keyFilter?: string): IStoreItem<T>[] {
+		if (this.db === undefined) {
+			throw new Error('Unexpected: store.getItems(...) called before db was set');
+		}
+
+		let items = this.db.getItems(this.getMetadata().name);
+		let itemsFiltered: IStoreItem<T>[] = [];
 		let timestampSecCur = (new Date()).getTime() / 1000;
 
-		for (let item of this.items) {
+		for (let item of items) {
 			if (item.ttlSec !== undefined && timestampSecCur > item.timestampSec + item.ttlSec) {
 				// TODO; remove item
 				continue;
@@ -100,9 +117,9 @@ export abstract class Store<T> {
 				continue;
 			}
 
-			itemsResult.push(item);
+			itemsFiltered.push(item);
 		}
 
-		return itemsResult;
+		return itemsFiltered;
 	}
 }

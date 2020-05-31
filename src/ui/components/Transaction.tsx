@@ -171,7 +171,8 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		if (visualization.context === 'incoming') {
 			if (item.ui.type === UITypes.Boolean) {
 				return <span className='shortItem' key={item.ui.name}>
-					{itemElement}
+					<span className='shortItem-name'>{item.ui.name}</span>
+					<span>{(item.value)? 'YES' : 'NO'}</span>
 				</span>;
 			} else {
 				return <span className='shortItem' key={item.ui.name}>
@@ -225,9 +226,11 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 
 		if (!readOnly) {
 			if (isCurrent)
-				short.push(<button className='btn-primary' onClick={sendCurrentRequest} key='send'>send</button>);
+				short.push(<button className='btn-primary' onClick={sendCurrentRequest} key='send'
+					title='Send this request (Ctrl+Enter)'>send</button>);
 			else
-				short.push(<button onClick={sendCurrentRequest} key='resend'>resend</button>);
+				short.push(<button onClick={sendCurrentRequest} key='resend'
+					title='Resend this request (Ctrl+Enter)'>resend</button>);
 		}
 
 		if (!isExpanded && type === 'res') {
@@ -243,7 +246,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			'is-current': isCurrent,
 		});
 
-		return <div className={resClasses}>
+		return <div className={resClasses} data-tid={visualization.transaction.id}>
 			<div className='var'>{`$${type}[${index}]`}</div>
 			<div className='prompt'>{(type === 'req')? '❯': '❮'}</div>
 			<div className='expansionToggle' onClick={this.toggleExpanded}>{(isExpanded)? '🞃' : '🞂'}</div>

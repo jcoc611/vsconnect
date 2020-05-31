@@ -2,7 +2,7 @@
 
 import { UITypes, ITransaction, IUserInterface, IContext, KeyValues, BytesValue } from "../../../interfaces";
 import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
-import { hasComponent, getComponent, setComponent, getBinaryComponentSize, hasKeyValueComponent, getKeyValueComponent } from "../../../utils/transactionTools";
+import { hasComponent, getComponent, setComponent, getBinaryComponentSize, hasKeyValueComponent, getKeyValueComponent, setKeyValueComponent } from "../../../utils/transactionTools";
 import { getHeaderValue } from "../utils/HeaderUtils";
 import { Formats } from "../../../utils/Formats";
 import { StringFormats } from "../utils/StringFormats";
@@ -36,7 +36,14 @@ export class BodyRawComponent extends UserInterfaceHandler<BytesValue> {
 	}
 
 	getTransactionFromValue(valueNew: BytesValue, tCurrent: ITransaction): ITransaction {
-		return setComponent(tCurrent, 'body', valueNew);
+		let tNew = setKeyValueComponent(
+			tCurrent, 'headers', 'Content-Type',
+			StringFormats.contentTypeFromMimeNew(
+				valueNew.languageHint || '',
+				getKeyValueComponent(tCurrent, 'headers', 'Content-Type', '')
+			)
+		);
+		return setComponent(tNew, 'body', valueNew);
 	}
 
 	getValueFromTransaction(tNew: ITransaction, context: IContext): BytesValue {

@@ -9,14 +9,20 @@ import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
 import { TextDocument } from 'vscode';
 import { Store } from "./stores/Store";
 import { Sandbox } from "./utils/Sandbox";
+import { Formats } from "./utils/Formats";
+import { StoreDatabase } from "./stores/StoreDatabase";
 
+
+export interface ServicesState {
+	storesData: string;
+}
 
 export class Services extends EventEmitter {
 	private static instance?: Services;
 
-	public static GetInstance(): Services {
+	public static GetInstance(stateRestored?: ServicesState): Services {
 		if (Services.instance === undefined) {
-			Services.instance = new Services();
+			Services.instance = new Services(stateRestored);
 		}
 
 		return Services.instance;
@@ -29,17 +35,25 @@ export class Services extends EventEmitter {
 	private uiHandlers: UserInterfaceHandler<any>[] = [];
 
 	private stores: Store<any>[] = [];
+	private storeDb: StoreDatabase;
 
 	private trackedDocuments: { [key: number]: TextDocument } = {};
 	private trackedDocumentsCount: number = 0;
 
-	// private sandbox: Sandbox = new Sandbox();
 	private sandboxes: { [key: number]: Sandbox } = {};
 
 	private tCount: number = 0;
 
-	private constructor() {
+	private constructor(stateRestored?: ServicesState) {
 		super();
+
+		if (stateRestored !== undefined) {
+			this.storeDb = new StoreDatabase(JSON.parse(stateRestored.storesData));
+		} else {
+			this.storeDb = new StoreDatabase();
+		}
+
+		this.storeDb.on('change', () => this.trigger('change', 'stores', this.storeDb.toJSON()));
 	}
 
 	async process(action: ServiceAction, sourceId: number) : Promise<any> {
@@ -114,6 +128,27 @@ export class Services extends EventEmitter {
 						{
 							type: 'string',
 							rawValue: textDocument.getText(),
+							languageHint: Formats.languageIdToMime(textDocument.languageId),
+						}
+					]
+				});
+				return;
+			}
+		}
+	}
+
+	textDocumentDidOpen(textDocument: TextDocument): void {
+		for (let iStr of Object.keys(this.trackedDocuments)) {
+			let i = Number(iStr);
+			if (this.trackedDocuments[i] === textDocument) {
+				this.trigger('message', <ServiceAction> {
+					type: ServiceActionTypes.TextDocumentChanged,
+					params: [
+						i,
+						{
+							type: 'string',
+							rawValue: textDocument.getText(),
+							languageHint: Formats.languageIdToMime(textDocument.languageId),
 						}
 					]
 				});
@@ -240,6 +275,7 @@ export class Services extends EventEmitter {
 	}
 
 	addStore(store: Store<any>): void {
+		store.setDb(this.storeDb);
 		this.stores.push(store);
 	}
 

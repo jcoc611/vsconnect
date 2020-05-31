@@ -115,6 +115,7 @@ export type KeyValues<T> = [T, T][];
 
 interface BytesEmptyValue {
 	type: 'empty';
+	languageHint?: string;
 }
 
 interface BytesStringValue {
@@ -128,6 +129,7 @@ interface BytesFileValue {
 	name: string;
 	path: string;
 	sizeBytes: number;
+	languageHint?: string;
 }
 
 export type BytesValue = BytesStringValue | BytesFileValue | BytesEmptyValue;
@@ -265,4 +267,16 @@ export interface ConsoleViewState {
 	protocols?: string[];
 	//  TODO: need to save and restore this in backend
 	// trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> };
+}
+
+// Stores
+export interface IStoreItem<T> {
+	data: T;
+	// key: string | null;
+	ttlSec?: number;
+	timestampSec: number;
+}
+
+export interface IStoreMetadata {
+	name: string;
 }

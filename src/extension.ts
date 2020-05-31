@@ -27,14 +27,20 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	}
 
-	setupServices();
+	setupServices(context);
 }
 
-function setupServices() {
-	let services = Services.GetInstance();
+function setupServices(context: vscode.ExtensionContext) {
+	let services = Services.GetInstance({
+		storesData: context.globalState.get('stores', '{}'),
+	});
 	let disposables: vscode.Disposable[] = [];
 
 	registerBuiltins(services);
+
+	services.on('change', (nameComponent: string, valueNew: any) => {
+		context.globalState.update(nameComponent, valueNew);
+	});
 	services.on('document:open', (docOptions: OpenTextDocumentOptions) =>
 		vscode.workspace.openTextDocument({
 			language: docOptions.language,
@@ -59,6 +65,11 @@ function setupServices() {
 	});
 	vscode.workspace.onDidChangeTextDocument(
 		(e) => services.textDocumentDidChange(e.document),
+		null,
+		disposables
+	);
+	vscode.workspace.onDidOpenTextDocument(
+		(docOpened) => services.textDocumentDidOpen(docOpened),
 		null,
 		disposables
 	);
@@ -111,6 +122,9 @@ class VSConnectPanel {
 	}
 
 	public static revive(panel: vscode.WebviewPanel, extensionPath: string, id: number) {
+		if (VSConnectPanel.editorCount <= id) {
+			VSConnectPanel.editorCount = id + 1;
+		}
 		let panelHandler = new VSConnectPanel(panel, extensionPath, id);
 		panel.webview.html = panelHandler._getHtmlForWebview(panel.webview);
 	}

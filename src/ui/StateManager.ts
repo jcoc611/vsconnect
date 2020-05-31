@@ -5,6 +5,7 @@ import { DelegatedPromise, PromiseCancelledError } from "../utils/DelegatedPromi
 import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
 import { DelegatedPromiseStore } from "../utils/DelegatedPromiseStore";
 import { LinkedList, LLNode } from "../utils/LinkedList";
+import { DOMUtils } from "./DOMUtils";
 
 interface ITrackedDocument {
 	vizItem: IVisualizationItem<BytesValue>;
@@ -97,14 +98,38 @@ export class StateManager {
 		window.addEventListener('vsconnect:contextmenu:close', () => this.closeContextMenu());
 
 		document.addEventListener('keydown', (event) => {
-			if (event.key === 'ArrowUp' && !this.hasContextMenu()) {
+			if (
+				event.key === 'ArrowUp'
+				&& (
+					event.target === document
+					|| DOMUtils.hasParentWithClass(<HTMLElement> event.target, 'consoleLine')
+				)
+			) {
 				event.preventDefault();
 				this.historyWalk('up');
-			} else if (event.key === 'ArrowDown' && !this.hasContextMenu()) {
+			} else if (
+				event.key === 'ArrowDown'
+				&& (
+					event.target === document
+					|| DOMUtils.hasParentWithClass(<HTMLElement> event.target, 'consoleLine')
+				)
+			) {
 				event.preventDefault();
 				this.historyWalk('down');
 			} else if (event.key === 'Escape') {
 				this.closeContextMenu();
+			} else if (event.key === 'Enter' && event.ctrlKey && !event.shiftKey) {
+				let reqNode = DOMUtils.getParentWithClass(<HTMLElement> event.target, 'request');
+				let tId: number;
+				if (reqNode === null) {
+					tId = this.currentRequest!.transaction.id!;
+				} else {
+					tId = Number(reqNode.dataset.tid);
+				}
+				this.sendRequest(tId);
+			} else if (event.key === 'Enter' && event.ctrlKey && event.shiftKey) {
+				this.rerun();
+				event.preventDefault();
 			}
 		});
 
@@ -206,6 +231,7 @@ export class StateManager {
 
 		this.currentRequest = await this.getNewRequest(protocolId);
 		this.triggerChange();
+		window.scrollTo(0,document.body.scrollHeight);
 	}
 
 	async updateUI(
@@ -573,10 +599,18 @@ export class StateManager {
 			this.protocols = prevState.protocols;
 			// this.trackedTextDocuments = prevState.trackedTextDocuments;
 
+			this.populateTIdInHistory();
 			this.triggerChange();
 			return true;
 		}
 		return false;
+	}
+
+	private populateTIdInHistory(): void {
+		this.tIdInHistory = {}
+		for (let n of this.history.nodes()) {
+			this.tIdInHistory[n.value.transaction.id!] = n;
+		}
 	}
 
 	private historyWalk(direction: 'up' | 'down'): void {

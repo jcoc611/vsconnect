@@ -1,7 +1,6 @@
 'use strict';
 
-import { KeyValues } from "../../../interfaces";
-import { StoreItem } from "../../../stores/Store";
+import { KeyValues, IStoreItem } from "../../../interfaces";
 import { CookieItem } from "../stores/CookieStore";
 
 export type HTTPQuery = { [key: string]: string | string[] | null };
@@ -88,7 +87,7 @@ export class StringFormats {
 		).join('; ');
 	}
 
-	static parseSetCookiesHeader(headers: string[], hostDefault?: string): StoreItem<CookieItem>[] {
+	static parseSetCookiesHeader(headers: string[], hostDefault?: string): IStoreItem<CookieItem>[] {
 		return headers.map((setCookie) => {
 			let parts = setCookie.split('; ');
 			let [key, value] = StringFormats.parseKeyValue(parts[0]);
@@ -108,7 +107,7 @@ export class StringFormats {
 				ttlSec = Number.POSITIVE_INFINITY;
 			}
 
-			let storeItem: StoreItem<CookieItem> = {
+			let storeItem: IStoreItem<CookieItem> = {
 				ttlSec,
 				timestampSec: (new Date()).getTime() / 1000,
 
@@ -127,7 +126,7 @@ export class StringFormats {
 		});
 	}
 
-	static serializeSetCookieHeader(items: StoreItem<CookieItem>[]) {
+	static serializeSetCookieHeader(items: IStoreItem<CookieItem>[]) {
 		// TODO
 	}
 
@@ -138,6 +137,19 @@ export class StringFormats {
 		}
 
 		return contentType;
+	}
+
+	static contentTypeFromMimeNew(mime: string, contentTypeOld?: string): string {
+		if (contentTypeOld === undefined) {
+			return mime;
+		}
+
+		let iMimeEnd = contentTypeOld.indexOf(';');
+		if (iMimeEnd >= 0) {
+			return mime + contentTypeOld.substr(iMimeEnd);
+		}
+
+		return mime;
 	}
 
 	private static parseKeyValue(keyValue: string): [string, string] {

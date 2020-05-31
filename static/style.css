@@ -2,7 +2,7 @@ body {
 	font-family: var(--vscode-font-family);
 }
 
-button {
+button, .btn {
 	font-family: var(--vscode-font-family);
 	background-color: var(--vscode-button-background);
 	color: var(--vscode-button-foreground);
@@ -14,12 +14,17 @@ button {
 	-webkit-user-select: none;
 }
 
-button:focus {
+.btn {
+	text-decoration: none;
+	cursor: default;
+}
+
+button:focus, .btn:focus {
 	/** accesibility */
 	border: 1px solid var(--vscode-terminal-ansiBrightBlue) !important;
 }
 
-button:hover, button:focus {
+button:hover, button:focus, .btn:hover {
 	background-color: var(--vscode-button-hoverBackground);
 }
 
@@ -394,12 +399,12 @@ textarea {
 	z-index: 99999999999;
 }
 
-#topBar-wrapper button {
+#topBar-wrapper button, #topBar-wrapper .btn {
 	background-color: var(--vscode-titleBar-activeBackground);
 	color: var(--vscode-titleBar-activeForeground);
 }
 
-#topBar-wrapper button:hover, #topBar-wrapper button:focus {
+#topBar-wrapper button:hover, #topBar-wrapper button:focus, #topBar-wrapper .btn:hover {
 	filter: brightness(1.5);
 }
 
@@ -581,7 +586,7 @@ div.form .form-item > span.form-item-label {
 
 /** context menu */
 #contextmenu-wrapper {
-	position: fixed;
+	position: absolute;
 	min-width: 280px;
 	background-color: var(--vscode-menu-background);
 	color: var(--vscode-menu-foreground);
