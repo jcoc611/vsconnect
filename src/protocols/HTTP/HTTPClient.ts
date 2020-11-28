@@ -3,6 +3,8 @@
 import * as http from 'http';
 import * as https from 'https';
 
+import * as url from 'url';
+
 import * as iconv from 'iconv-lite';
 import { gunzipSync, inflateSync, brotliDecompressSync } from 'zlib';
 
@@ -40,9 +42,10 @@ export class HTTPClient {
 
 		// TODO validation
 		let hostComponent: string = getComponent<string>(tReq, 'host');
-		let [_, hostScheme, host, path] = /(.*?:\/\/|)?([^\/]*)(.*)$/.exec(hostComponent)!;
-		if (hostScheme === undefined) {
-			hostScheme = (getComponent<TLSComponentValue>(tReq, 'tls').enabled)? 'https://' : 'http://';
+		let urlParsed: url.UrlWithStringQuery = url.parse(hostComponent);
+		let hostScheme: string | undefined = urlParsed.protocol;
+		if (hostScheme != 'http:' && hostScheme != 'https:') {
+			hostScheme = (getComponent<TLSComponentValue>(tReq, 'tls').enabled)? 'https:' : 'http:';
 		}
 
 		let body = getBinaryComponentValue(tReq, 'body');
@@ -60,21 +63,21 @@ export class HTTPClient {
 			/* Other options
 			hostname?: string;
 			family?: number; Ipv4 vs ipv6
-			port?: number | string;
 			defaultPort?: number | string;
 			localAddress?: string;
 			socketPath?: string;
 			headers?: OutgoingHttpHeaders;
 			agent?: Agent | boolean;
 			_defaultAgent?: Agent;
-			timeout?: number;
 			setHost?: boolean;
 			*/
 			let reqOptions: http.RequestOptions & https.RequestOptions = {
-				host,
+				host: urlParsed.hostname,
+				port: urlParsed.port,
 				method: getComponent<string>(tReq, 'verb'),
 				path: getComponent<string>(tReq, 'path'),
 				headers: headersObj,
+				timeout: 5000 /*milliseconds*/, // TODO: setting
 			};
 			let req: http.ClientRequest;
 
@@ -106,7 +109,7 @@ export class HTTPClient {
 						state,
 						shortStatus: `${res.statusCode} ${res.statusMessage}`,
 						components: {
-							host,
+							host: urlParsed.hostname,
 							// TODO: this should be type 'file' if non text?
 							body: <BytesValue> {
 								type: 'string',
@@ -121,17 +124,53 @@ export class HTTPClient {
 				});
 			};
 
-			if (hostScheme === 'https://') {
+			if (hostScheme === 'https:') {
 				req = https.request(reqOptions, handleRes);
 			} else {
 				req = http.request(reqOptions, handleRes);
 			}
 
-			/* TODO
+			req.on('timeout', () => {
+				let timingEnd = process.hrtime(timingStart);
+				let tRes: ITransaction = {
+					responseTo: tReq.id,
+					protocolId: 'HTTP',
+					state: ITransactionState.Error,
+					shortStatus: `Timeout`,
+					components: {
+						host: urlParsed.hostname,
+						// TODO: this should be type 'file' if non text?
+						body: <BytesValue> {
+							type: 'empty'
+						},
+						headers: [],
+						duration: Formats.hrToString(timingEnd),
+					},
+				};
+				resolve(tRes);
+			});
+			
 			req.on('error', (e) => {
 				console.error(`problem with request: ${e.message}`);
+				let timingEnd = process.hrtime(timingStart);
+				let tRes: ITransaction = {
+					responseTo: tReq.id,
+					protocolId: 'HTTP',
+					state: ITransactionState.Error,
+					shortStatus: (e as any).code,
+					components: {
+						host: urlParsed.hostname,
+						// TODO: this should be type 'file' if non text?
+						body: <BytesValue> {
+							type: 'empty'
+						},
+						headers: [],
+						duration: Formats.hrToString(timingEnd),
+					},
+				};
+				resolve(tRes);
 			});
-			*/
+			
 
 			if (body !== '') {
 				// req.setDefaultEncoding((typeof(body) === 'string') ? 'utf8' : 'binary');
