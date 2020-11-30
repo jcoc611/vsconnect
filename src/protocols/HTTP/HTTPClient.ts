@@ -41,11 +41,16 @@ export class HTTPClient {
 		}
 
 		// TODO validation
+		let isHttps = getComponent<TLSComponentValue>(tReq, 'tls').enabled;
 		let hostComponent: string = getComponent<string>(tReq, 'host');
+		if (!/([^:]+:\/\/)/.test(hostComponent))
+		{
+			hostComponent = (isHttps)? 'https://' : 'http://' + hostComponent;
+		}
 		let urlParsed: url.UrlWithStringQuery = url.parse(hostComponent);
 		let hostScheme: string | undefined = urlParsed.protocol;
 		if (hostScheme != 'http:' && hostScheme != 'https:') {
-			hostScheme = (getComponent<TLSComponentValue>(tReq, 'tls').enabled)? 'https:' : 'http:';
+			hostScheme = (isHttps)? 'https:' : 'http:';
 		}
 
 		let body = getBinaryComponentValue(tReq, 'body');
