@@ -1,9 +1,9 @@
 {
 	"name": "vsconnect",
-	"version": "0.2.9",
+	"version": "0.2.10",
 	"main": "./dist/extension",
 	"engines": {
-		"vscode": "^1.39.0"
+		"vscode": "^1.51.0"
 	},
 	"repository": {
 		"type": "git",

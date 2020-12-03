@@ -48,7 +48,7 @@ export class HTTPClient {
 			hostComponent = (isHttps)? 'https://' : 'http://' + hostComponent;
 		}
 		let urlParsed: url.UrlWithStringQuery = url.parse(hostComponent);
-		let hostScheme: string | undefined = urlParsed.protocol;
+		let hostScheme: string | null = urlParsed.protocol;
 		if (hostScheme != 'http:' && hostScheme != 'https:') {
 			hostScheme = (isHttps)? 'https:' : 'http:';
 		}

@@ -1,3 +1,11 @@
+<a name="v0.2.10"></a>
+## [v0.2.10](https://github.com/jcoc611/vsconnect/compare/v0.2.9...v0.2.10) (2020-12-02)
+
+### Fixes
+ - HTTP requests with no protocol in the URL (defaults to `http://`)
+ - Displays appropriate error messages on all HTTP connection errors
+ - Updates npm package dependencies
+
 <a name="v0.2.9"></a>
 ## [v0.2.9](https://github.com/jcoc611/vsconnect/compare/v0.2.8...v0.2.9) (2020-05-31)
 
