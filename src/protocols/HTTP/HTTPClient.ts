@@ -81,6 +81,14 @@ export class HTTPClient {
 			headersObj['Content-Type'] = formData.getHeaders()['content-type'];
 		}
 
+		for (let headerName of Object.keys(headersObj)) {
+			if (headerName.localeCompare('content-length', undefined, { sensitivity: 'accent' }) === 0) {
+				if (headersObj[headerName] == 'auto') {
+					headersObj[headerName] = [ body.length.toString() ];
+				}
+			}
+		}
+
 		return new Promise((resolve, reject) => {
 			let timingStart: [number, number];
 
