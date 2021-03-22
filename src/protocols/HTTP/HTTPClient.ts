@@ -15,6 +15,7 @@ import { MultipartValue } from "./components/BodyMultipart";
 import { objToHeaderValues, hasHeaderValue, getHeaderValue } from './utils/HeaderUtils';
 import { Formats } from '../../utils/Formats';
 import { StringFormats } from './utils/StringFormats';
+import { workspace } from 'vscode';
 
 interface TLSComponentValue {
 	enabled: boolean;
@@ -22,8 +23,26 @@ interface TLSComponentValue {
 
 // v0.2.5 -> moved from 'request' to the client below to reduce dependencies and simplify
 
+// Return default timeout in seconds.
+export function getDefaultTimeout(): number {
+	let cfgVsconnect = workspace.getConfiguration("vsconnect");
+	if (cfgVsconnect !== undefined) {
+		return cfgVsconnect.timeout;
+	}
+	return 5.0; // Hard-coded default if there is no custom setting.
+}
+
 export class HTTPClient {
 	static async request(tReq: ITransaction): Promise<ITransaction> {
+		// Set various options
+		let optTimeout = getDefaultTimeout();
+		let options = getComponent<KeyValues<string>>(tReq, 'options', []);
+		for (let [hKey, hValue] of options) {
+			if (hKey == 'timeout') {
+				optTimeout = Number(hValue);
+			}
+		}
+
 		let headers = getComponent<KeyValues<string>>(tReq, 'headers', []);
 
 		let headersObj: { [key: string]: string | string[] } = {};
@@ -82,7 +101,7 @@ export class HTTPClient {
 				method: getComponent<string>(tReq, 'verb'),
 				path: getComponent<string>(tReq, 'path'),
 				headers: headersObj,
-				timeout: 5000 /*milliseconds*/, // TODO: setting
+				timeout: optTimeout * 1000, /*milliseconds*/
 			};
 			let req: http.ClientRequest;
 

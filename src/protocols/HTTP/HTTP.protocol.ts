@@ -3,7 +3,7 @@
 import { ProtocolHandler } from '../../ProtocolHandler';
 import { ITransaction, IProtocolMetadata, IComponentTypes, UITypes, BytesValue } from '../../interfaces';
 
-import { HTTPClient } from './HTTPClient';
+import { HTTPClient, getDefaultTimeout } from './HTTPClient';
 
 import { QueryComponent } from "./components/Query";
 import { StatusTextComponent } from "./components/StatusText";
@@ -115,6 +115,15 @@ export class HTTP extends ProtocolHandler {
 				new CookiesComponent(),
 				new AuthBasicComponent(),
 				new AuthOAuth1Component(),
+				{
+					name: 'options',
+					type: IComponentTypes.KeyValues,
+					required: false,
+					default: [
+						['timeout', getDefaultTimeout().toString() ]
+					],
+					ui: 'extra'
+				},
 			]
 		};
 	}

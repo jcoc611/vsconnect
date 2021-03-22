@@ -41,7 +41,18 @@
 				"title": "Open a new VSConnect Tab",
 				"category": "VSConnect"
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "VSConnect Settings",
+			"properties": {
+			  "vsconnect.timeout": {
+				"description": "Default timeout in seconds.",
+				"type": "number",
+				"default": 5.0
+			  }
+		  }
+		}
 	},
 	"scripts": {
 		"package": "vsce package",
