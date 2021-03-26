@@ -43,22 +43,6 @@ export class HTTPClient {
 			}
 		}
 
-		let headers = getComponent<KeyValues<string>>(tReq, 'headers', []);
-
-		let headersObj: { [key: string]: string | string[] } = {};
-		for (let [hKey, hValue] of headers) {
-			let hValueCur = headersObj[hKey];
-			if (hValueCur === undefined) {
-				headersObj[hKey] = hValue;
-			} else {
-				if (!Array.isArray(hValueCur)) {
-					headersObj[hKey] = [ hValueCur ];
-				}
-
-				(<string[]> headersObj[hKey]).push(hValue);
-			}
-		}
-
 		// TODO validation
 		let isHttps = getComponent<TLSComponentValue>(tReq, 'tls').enabled;
 		let hostComponent: string = getComponent<string>(tReq, 'host');
@@ -72,13 +56,70 @@ export class HTTPClient {
 			hostScheme = (isHttps)? 'https:' : 'http:';
 		}
 
-		let body = getBinaryComponentValue(tReq, 'body');
-		if (body === '' && hasComponent(tReq, 'extra:body-multipart')) {
-			let formData = BodyUtils.multipartFormData(
-				getComponent<MultipartValue>(tReq, 'extra:body-multipart')
-			);
-			body = formData.getBuffer();
-			headersObj['Content-Type'] = formData.getHeaders()['content-type'];
+		let httpMethod = getComponent<string>(tReq, 'verb');
+
+		let body: string | Buffer = '';
+		let replaceContentType = '';
+		if (httpMethod !== 'TRACE') {
+			// Payload is not allowed for TRACE.
+			body = getBinaryComponentValue(tReq, 'body');
+			if (body === '' && hasComponent(tReq, 'extra:body-multipart')) {
+				let formData = BodyUtils.multipartFormData(
+					getComponent<MultipartValue>(tReq, 'extra:body-multipart')
+				);
+				body = formData.getBuffer();
+				replaceContentType = formData.getHeaders()['content-type'];
+			}
+		}
+
+		let headers = getComponent<KeyValues<string>>(tReq, 'headers', []);
+
+		let headersLwr: { [key: string]: string } = {};
+		let headersObj: { [key: string]: string | string[] } = {};
+		for (let [hKey, hValue] of headers) {
+			// Note that HTTP headers are case insensitive.
+			// If multiple same headers exist but in different casing, use the first one to send.
+			let hKeyLwr = hKey.toLowerCase();
+			let hKeyExists = headersLwr[hKeyLwr];
+			if (hKeyExists === undefined) {
+				// Save header in whatever casing to be used consistently.
+				headersLwr[hKeyLwr] = hKey;
+			} else {
+				hKey = hKeyExists;
+			}
+
+			let skip = false;
+			if (hKeyLwr === 'content-type') {
+				if (httpMethod === 'TRACE') {
+					// Payload is not allowed for TRACE.
+					skip = true;
+				} else if (replaceContentType !== '') {
+					hValue = replaceContentType;
+					replaceContentType = '';
+				}
+			} else if (hKeyLwr === 'content-length') {
+				if (httpMethod === 'TRACE' || (httpMethod !== 'POST' && httpMethod !== 'PUT' && body === '')) {
+					// Only set Content-Length for POST or PUT or there is payload (except TRACE).
+					skip = true;
+				} else {
+					if (hValue === 'auto') {
+						hValue = body.length.toString();
+					}
+				}
+			}
+
+			if (!skip) {
+				let hValueCur = headersObj[hKey];
+				if (hValueCur === undefined) {
+					headersObj[hKey] = hValue;
+				} else {
+					if (!Array.isArray(hValueCur)) {
+						headersObj[hKey] = [ hValueCur ];
+					}
+
+					(<string[]> headersObj[hKey]).push(hValue);
+				}
+			}
 		}
 
 		return new Promise((resolve, reject) => {
@@ -98,7 +139,7 @@ export class HTTPClient {
 			let reqOptions: http.RequestOptions & https.RequestOptions = {
 				host: urlParsed.hostname,
 				port: urlParsed.port,
-				method: getComponent<string>(tReq, 'verb'),
+				method: httpMethod,
 				path: getComponent<string>(tReq, 'path'),
 				headers: headersObj,
 				timeout: optTimeout * 1000, /*milliseconds*/
