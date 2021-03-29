@@ -1,3 +1,12 @@
+<a name="v0.3.0"></a>
+## [v0.3.0](https://github.com/jcoc611/vsconnect/compare/v0.2.10...v0.3.0) (2021-03-28)
+
+### Improvements
+ - HTTP: Added special value `auto` for `Content-Length`, which causes the body length to be used before sending the request.
+ - HTTP: Added timeout setting on a per-request basis.
+ - Some dependency upgrades.
+ - Out of alpha!
+
 <a name="v0.2.10"></a>
 ## [v0.2.10](https://github.com/jcoc611/vsconnect/compare/v0.2.9...v0.2.10) (2020-12-02)
 

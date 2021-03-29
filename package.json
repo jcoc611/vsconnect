@@ -1,9 +1,9 @@
 {
 	"name": "vsconnect",
-	"version": "0.2.10",
+	"version": "0.3.0",
 	"main": "./dist/extension",
 	"engines": {
-		"vscode": "^1.51.0"
+		"vscode": "^1.54.0"
 	},
 	"repository": {
 		"type": "git",
@@ -12,7 +12,7 @@
 	"displayName": "VSConnect",
 	"publisher": "jcoc611",
 	"description": "The ultimate network client for VS Code",
-	"preview": true,
+	"preview": false,
 	"categories": [
 		"Other"
 	],
@@ -46,12 +46,12 @@
 			"type": "object",
 			"title": "VSConnect Settings",
 			"properties": {
-			  "vsconnect.timeout": {
-				"description": "Default timeout in seconds.",
-				"type": "number",
-				"default": 5.0
-			  }
-		  }
+				"vsconnect.timeout": {
+					"description": "Default timeout in seconds.",
+					"type": "number",
+					"default": 5
+				}
+			}
 		}
 	},
 	"scripts": {
@@ -68,22 +68,22 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/classnames": "^2.2.11",
-		"@types/node": "^12.19.8",
-		"@types/react": "^16.14.2",
-		"@types/react-dom": "^16.9.10",
-		"@types/vscode": "^1.51.0",
+		"@types/node": "^12.20.7",
+		"@types/react": "^16.14.5",
+		"@types/react-dom": "^16.9.12",
+		"@types/vscode": "^1.54.0",
 		"concurrently": "^5.3.0",
 		"ts-loader": "^6.2.2",
 		"tslint": "^5.20.1",
 		"tslint-microsoft-contrib": "^6.2.0",
-		"typescript": "^3.9.7",
-		"vsce": "^1.81.1",
-		"webpack": "^4.44.2",
+		"typescript": "^3.9.9",
+		"vsce": "^1.87.0",
+		"webpack": "^4.46.0",
 		"webpack-cli": "^3.3.12"
 	},
 	"dependencies": {
 		"classnames": "^2.2.6",
-		"form-data": "^3.0.0",
+		"form-data": "^3.0.1",
 		"iconv-lite": "^0.5.2",
 		"react": "^16.14.0",
 		"react-dom": "^16.14.0"

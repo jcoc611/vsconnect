@@ -99,7 +99,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 		}
 
 		return <div id="content">
-			<div style={({'marginTop':'15px'})}>🧪 Thanks for trying out the <i>alpha</i> version of VSConnect! All feedback is welcome on <a target="_blank" href="https://github.com/jcoc611/vsconnect/issues">Github</a>.</div>
+			<div style={({'marginTop':'15px'})}>🧪 Thanks for trying out the <i>beta</i> version of VSConnect! All feedback is welcome on <a target="_blank" href="https://github.com/jcoc611/vsconnect/issues">Github</a>.</div>
 			{content}
 			<div style={({'opacity': '0.6'})}>{rerunContent}</div>
 		</div>;
