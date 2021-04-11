@@ -1,10 +1,10 @@
 'use strict';
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, deleteKeyValueComponent, setKeyValueComponent, getKeyValueComponent } from "../../../utils/transactionTools";
 
-export class AuthBasicComponent extends UserInterfaceHandler<[string, string]> {
+export class AuthBasicVisualizer extends Visualizer<[string, string]> {
 
 	defaultValue(): [string, string] {
 		return [ '', '' ];

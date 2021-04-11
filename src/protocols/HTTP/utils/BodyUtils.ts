@@ -2,7 +2,7 @@
 
 import * as FormData from 'form-data';
 import * as fs from 'fs';
-import { MultipartValue } from "../components/BodyMultipart";
+import { MultipartValue } from "../visualizers/BodyMultipart";
 
 export class BodyUtils {
 	static multipartFormData(multipart: MultipartValue): FormData {

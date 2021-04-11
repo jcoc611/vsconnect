@@ -1,8 +1,8 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
-export class QueryComponent extends UserInterfaceHandler<KeyValues<string>> {
+export class QueryVisualizer extends Visualizer<KeyValues<string>> {
 	private isURI: boolean;
 
 	// 'query', 'path', true

@@ -71,7 +71,7 @@ export class Sandbox {
 		}
 
 		return {
-			handlerId: -1, // readonly
+			visualizerId: -1, // readonly
 			ui: {
 				location: 'short',
 				name: 'preview',

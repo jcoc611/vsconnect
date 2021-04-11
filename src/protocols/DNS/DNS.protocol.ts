@@ -6,6 +6,7 @@ import { getComponent } from "../../utils/transactionTools";
 import DnsClient from "./client"
 import { IQuestion, RecordType, QuestionExtraType, RecordClass, IMessage, ResponseCode, IResourceRecord, QuestionType } from './client/interfaces';
 import { Formats } from '../../utils/Formats';
+import { SimpleVisualizer } from '../../visualizers/SimpleVisualizer';
 
 const recordTypeToStr: { [key in RecordType]: string } = {
 	[RecordType.A]     : 'A',
@@ -171,142 +172,162 @@ export class DNSProtocol extends ProtocolHandler {
 			},
 		];
 
+		const componentId: IComponent = {
+			name: 'id',
+			type: IComponentTypes.String,
+			required: false,
+			default: '',
+		};
+		const componentOperation: IComponent = {
+			name: 'operation',
+			type: IComponentTypes.Enum,
+			required: true,
+			allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
+			default: 'QUERY',
+			
+		};
+		const componentHost: IComponent = {
+			name: 'host',
+			type: IComponentTypes.String,
+			required: true,
+			default: '',	
+		};
+		const componentAuthoritative: IComponent = {
+			name: 'authoritative',
+			type: IComponentTypes.Boolean,
+			required: false,
+			default: false,
+			
+		};
+		const componentTruncated: IComponent = {
+			name: 'truncated',
+			type: IComponentTypes.Boolean,
+			required: true,
+			default: false,
+			
+		};
+		const componentUseRecursion: IComponent = {
+			name: 'use recursion',
+			type: IComponentTypes.Boolean,
+			required: false,
+			default: false,
+			
+		};
+		const componentCanRecurse: IComponent = {
+			name: 'can recurse',
+			type: IComponentTypes.Boolean,
+			required: false,
+			default: false,
+		};
+		const componentQuestions: IComponent = {
+			name: 'questions',
+			type: IComponentTypes.Table,
+			required: false,
+			default: [],
+			components: questionComponents,
+		};
+		const componentAnswers: IComponent = {
+			name: 'answers',
+			type: IComponentTypes.Table,
+			required: false,
+			default: [],
+			components: recordComponents,
+			
+		};
+		const componentNsRecords: IComponent = {
+			name: 'nsRecords',
+			type: IComponentTypes.Table,
+			required: false,
+			default: [],
+			components: recordComponents,
+		};
+		const componentAdditionals: IComponent = {
+			name: 'additionals',
+			type: IComponentTypes.Table,
+			required: false,
+			default: [],
+			components: recordComponents,
+		};
+
 		return {
 			id: 'DNS',
+			isConnectionOriented: false,
 			components: [
-				{
-					name: 'id',
-					type: IComponentTypes.String,
-					required: false,
-					default: '',
-				},
-				{
-					name: 'operation',
-					type: IComponentTypes.Enum,
-					required: true,
-					allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
-					default: 'QUERY',
-					ui: {
-						location: 'short',
-						type: UITypes.Enum,
-						name: 'operation',
-
-						allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
-						contextType: 'outgoing',
-					},
-				},
-				{
-					name: 'host',
-					type: IComponentTypes.String,
-					required: true,
-					default: '',
-					ui: 'short'
-				},
-				{
-					name: 'authoritative',
-					type: IComponentTypes.Boolean,
-					required: false,
-					default: false,
-					ui: {
-						location: 'short',
-						name: 'authoritative',
-						type: UITypes.Boolean,
-						contextType: 'incoming'
-					},
-				},
-				{
-					name: 'truncated',
-					type: IComponentTypes.Boolean,
-					required: true,
-					default: false,
-					ui: {
-						location: 'short',
-						name: 'truncated',
-						type: UITypes.Boolean,
-						contextType: 'incoming'
-					},
-				},
-				{
-					name: 'use recursion',
-					type: IComponentTypes.Boolean,
-					required: false,
-					default: false,
-					ui: {
-						location: 'short',
-						name: 'use recursion',
-						type: UITypes.Boolean,
-						contextType: 'outgoing'
-					},
-				},
-				{
-					name: 'can recurse',
-					type: IComponentTypes.Boolean,
-					required: false,
-					default: false,
-					ui: {
-						location: 'short',
-						name: 'can recurse',
-						type: UITypes.Boolean,
-						contextType: 'incoming'
-					},
-				},
-				{
-					name: 'questions',
-					type: IComponentTypes.Table,
-					required: false,
-					default: [],
-					components: questionComponents,
-					ui: {
-						location: 'extra',
-						name: 'questions',
-						type: UITypes.Table,
-						contextType: 'outgoing'
-					},
-				},
-				{
-					name: 'answers',
-					type: IComponentTypes.Table,
-					required: false,
-					default: [],
-					components: recordComponents,
-					ui: {
-						location: 'extra',
-						name: 'answers',
-						type: UITypes.Table,
-						contextType: 'incoming'
-					},
-				},
-				{
-					name: 'nsRecords',
-					type: IComponentTypes.Table,
-					required: false,
-					default: [],
-					components: recordComponents,
-					ui: {
-						location: 'extra',
-						name: 'nsRecords',
-						type: UITypes.Table,
-						contextType: 'incoming'
-					},
-				},
-				{
-					name: 'additionals',
-					type: IComponentTypes.Table,
-					required: false,
-					default: [],
-					components: recordComponents,
-					ui: {
-						location: 'extra',
-						name: 'additionals',
-						type: UITypes.Table,
-						contextType: 'incoming'
-					},
-				},
+				componentId,
+				componentOperation,
+				componentHost,
+				componentAuthoritative,
+				componentTruncated,
+				componentUseRecursion,
+				componentCanRecurse,
+				componentQuestions,
+				componentAnswers,
+				componentNsRecords,
+				componentAdditionals,
 			],
+			defaultVisualizers: [
+				SimpleVisualizer.ForComponent('DNS', componentOperation, {
+					location: 'short',
+					type: UITypes.Enum,
+					name: 'operation',
+	
+					allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
+					contextType: 'outgoing',
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentHost, 'short'),
+				SimpleVisualizer.ForComponent('DNS', componentAuthoritative, {
+					location: 'short',
+					name: 'authoritative',
+					type: UITypes.Boolean,
+					contextType: 'incoming'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentTruncated, {
+					location: 'short',
+					name: 'truncated',
+					type: UITypes.Boolean,
+					contextType: 'incoming'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentUseRecursion, {
+					location: 'short',
+					name: 'use recursion',
+					type: UITypes.Boolean,
+					contextType: 'outgoing'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentCanRecurse, {
+					location: 'short',
+					name: 'can recurse',
+					type: UITypes.Boolean,
+					contextType: 'incoming'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentQuestions, {
+					location: 'extra',
+					name: 'questions',
+					type: UITypes.Table,
+					contextType: 'outgoing'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentAnswers, {
+					location: 'extra',
+					name: 'answers',
+					type: UITypes.Table,
+					contextType: 'incoming'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentNsRecords, {
+					location: 'extra',
+					name: 'nsRecords',
+					type: UITypes.Table,
+					contextType: 'incoming'
+				}),
+				SimpleVisualizer.ForComponent('DNS', componentAdditionals, {
+					location: 'extra',
+					name: 'additionals',
+					type: UITypes.Table,
+					contextType: 'incoming'
+				}),
+			]
 		};
 	}
 
-	do(tReq: ITransaction, sourceId?: number): void {
+	send(tReq: ITransaction, sourceId?: number): void {
 		let questions: IQuestion[] = getComponent<[string, string][]>(tReq, 'questions').map(
 			([name, typeStr]: [string, string]) => ({
 				name,

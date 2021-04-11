@@ -1,11 +1,11 @@
 'use strict';
 
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, getBinaryComponentValue, getBinaryComponentString, deleteComponent } from "../../../utils/transactionTools";
 import { OAuth1, OAuth1Request, OAuth1Token } from "../utils/OAuth1";
 
-export class AuthOAuth1Component extends UserInterfaceHandler<string[]> {
+export class AuthOAuth1Visualizer extends Visualizer<string[]> {
 
 	defaultValue(): string[] {
 		return [ '', '' ];

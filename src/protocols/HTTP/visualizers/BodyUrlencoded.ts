@@ -1,8 +1,8 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext, BytesValue } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, setKeyValueComponent, hasKeyValueComponent } from "../../../utils/transactionTools";
 
-export class BodyUrlencodedComponent extends UserInterfaceHandler<KeyValues<string>> {
+export class BodyUrlencodedVisualizer extends Visualizer<KeyValues<string>> {
 	defaultValue(): KeyValues<string> {
 		return [];
 	}

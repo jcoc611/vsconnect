@@ -7,7 +7,7 @@
 VSConnect `("OSS - Connect")` is the ultimate network client for VS Code. It provides an interface
 similar to a command line where you can submit network requests and receive network responses. It
 comes with basic industry-standard Protocols such as HTTP and DNS, and it also provides several
-extension points so you can add extra Protocols and UI Handlers via separate VSCode extensions.
+extension points so you can add extra Protocols and Visualizers via separate VSCode extensions.
 
 ## Features
  - **HTTP and DNS:** Make REST calls, query for DNS records, and more!
@@ -27,7 +27,7 @@ Either of these will create the necessary files in `dist/`. Use the launch confi
 to execute the extension on the Extension Host.
 
 ## Contribute
-Contributions, PRs and issues welcome! For new protocols and UI handlers, you can either contribute
+Contributions, PRs and issues welcome! For new protocols and Visualizers, you can either contribute
 them directly to this repo, or create a separate extension and use the commands provided to add them
 to the VSConnect UI *(TODO - not available yet, open an Issue if you are interested)*.
 

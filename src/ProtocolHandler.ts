@@ -1,13 +1,12 @@
 import { ITransaction, ITransactionState, IProtocolMetadata } from './interfaces'
 import { EventEmitter } from './utils/EventEmitter';
-import { UserInterfaceHandler } from './uiHandlers/UserInterfaceHandler';
 
 export abstract class ProtocolHandler extends EventEmitter {
 	serviceMethods: Set<string> = new Set( [ 'do' ] );
 	protected connections: any[] = [];
 
 	abstract initialize(params: any[]): Promise<boolean>;
-	abstract do(transaction: ITransaction, sourceId?: number): void;
+	abstract send(transaction: ITransaction, sourceId?: number): void;
 
 	abstract getMetadata(): IProtocolMetadata;
 
@@ -29,7 +28,7 @@ export abstract class ProtocolHandler extends EventEmitter {
 		let components: { [name: string]: any } = {};
 
 		for (let componentDefinition of meta.components) {
-			if (!(componentDefinition instanceof UserInterfaceHandler) && componentDefinition.default !== undefined) {
+			if (componentDefinition.default !== undefined) {
 				components[componentDefinition.name] = componentDefinition.default;
 			}
 		}

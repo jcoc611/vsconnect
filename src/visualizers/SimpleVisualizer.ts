@@ -1,9 +1,9 @@
-import { UITypes, ITransaction, IUserInterface, IContext, BytesValue } from "../interfaces";
-import { UserInterfaceHandler } from "../uiHandlers/UserInterfaceHandler";
+import { UITypes, ITransaction, IUserInterface, IContext, BytesValue, IComponent, DefaultComponentUI } from "../interfaces";
+import { Visualizer } from "./Visualizer";
 import { hasComponent, getComponent, setComponent, getBinaryComponentSize } from "../utils/transactionTools";
 import { Formats } from "../utils/Formats";
 
-export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
+export class SimpleVisualizer<T> extends Visualizer<T> {
 	protected protocolId: string;
 	protected uiSpec: IUserInterface;
 
@@ -12,6 +12,37 @@ export class UISimpleHandler<T> extends UserInterfaceHandler<T> {
 
 		this.protocolId = protocolId;
 		this.uiSpec = uiSpec;
+	}
+
+	static ForComponent<T>(protocolId: string, component: IComponent, defaultUI: IUserInterface | "short" | "extra") : Visualizer<T>
+	{
+		let ui: IUserInterface;
+		if (typeof(defaultUI) === "string") {
+			ui = {
+				type: DefaultComponentUI[component.type],
+				name: component.name,
+				location: defaultUI,
+			}
+		} else {
+			ui = defaultUI;
+		}
+
+		if (component.allowedValues && ui.allowedValues === undefined) {
+			ui.allowedValues = component.allowedValues;
+		}
+
+		if (component.components && ui.components === undefined) {
+			ui.components = component.components.map( (c) => ({
+				name: c.name,
+				type: DefaultComponentUI[c.type],
+				required: c.required,
+				default: c.default,
+				allowedValues: c.allowedValues,
+				location: ui.location,
+			}));
+		}
+
+		return new SimpleVisualizer<T>(protocolId, ui);
 	}
 
 	getUI(t: ITransaction, context: IContext): IUserInterface {

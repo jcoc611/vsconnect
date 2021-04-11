@@ -1,12 +1,12 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
 interface TLSComponentValue {
 	enabled: boolean;
 }
 
-export class TLSComponent extends UserInterfaceHandler<boolean> {
+export class TLSVisualizer extends Visualizer<boolean> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.Boolean,

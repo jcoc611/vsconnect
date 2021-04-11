@@ -1,8 +1,8 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, setComponents } from "../../../utils/transactionTools";
 
-export class URLComponent extends UserInterfaceHandler<string> {
+export class URLVisualizer extends Visualizer<string> {
 	getUI(transaction: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.String,

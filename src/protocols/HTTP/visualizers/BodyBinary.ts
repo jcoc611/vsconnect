@@ -1,12 +1,12 @@
 'use strict';
 
 import { UITypes, ITransaction, IUserInterface, IContext, KeyValues, BytesValue } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 import { getHeaderValue } from "../utils/HeaderUtils";
 import { Formats } from "../../../utils/Formats";
 
-export class BodyBinaryComponent extends UserInterfaceHandler<BytesValue> {
+export class BodyBinaryVisualizer extends Visualizer<BytesValue> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		let valueCur = this.getValueFromTransaction(t, context);
 		return {

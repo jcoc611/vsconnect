@@ -1,8 +1,8 @@
 import { UITypes, ITransaction, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent } from "../../../utils/transactionTools";
 
-export class StatusTextComponent extends UserInterfaceHandler<string> {
+export class StatusTextVisualizer extends Visualizer<string> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.String,

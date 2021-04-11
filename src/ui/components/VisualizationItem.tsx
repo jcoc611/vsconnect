@@ -278,14 +278,14 @@ class FormItem extends AbstractItem<any[]> {
 	handleChange = (item: IVisualizationItem<any>) => {
 		const { valueFunction, valuePreview } = this.props;
 		let valueNew = this.cloneValue();
-		valueNew[item.handlerId] = item.value;
+		valueNew[item.visualizerId] = item.value;
 
 		let valueFunctionNew;
 		if (item.valueFunction === undefined && valueFunction === undefined) {
 			valueFunctionNew = undefined;
 		} else {
 			valueFunctionNew = this.cloneOrNew(valueFunction);
-			valueFunctionNew[item.handlerId] = item.valueFunction;
+			valueFunctionNew[item.visualizerId] = item.valueFunction;
 		}
 
 		let valuePreviewNew;
@@ -293,7 +293,7 @@ class FormItem extends AbstractItem<any[]> {
 			valuePreviewNew = undefined;
 		} else {
 			valuePreviewNew = this.cloneOrNew(valuePreview);
-			valuePreviewNew[item.handlerId] = item.valuePreview;
+			valuePreviewNew[item.visualizerId] = item.valuePreview;
 		}
 
 		this.props.onChange!(valueNew, false, valueFunctionNew, valuePreviewNew);
@@ -328,7 +328,7 @@ class FormItem extends AbstractItem<any[]> {
 
 		for (let i = 0; i < components.length; i++) {
 			let viz: IVisualizationItem<any> = {
-				handlerId: i,
+				visualizerId: i,
 				ui: components[i],
 				value: value[i],
 				valueFunction: (valueFunction && valueFunction[i] !== null)? valueFunction[i]: undefined,

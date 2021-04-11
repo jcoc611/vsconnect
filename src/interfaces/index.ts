@@ -1,4 +1,4 @@
-import { UserInterfaceHandler } from "../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../visualizers/Visualizer";
 
 export type IContext = 'incoming' | 'outgoing';
 
@@ -69,12 +69,13 @@ export interface IComponent {
 	default: any;
 	allowedValues?: any[];
 	components?: IComponent[];
-	ui?: IUserInterface | 'short' | 'extra';
 }
 
 export interface IProtocolMetadata {
 	id: string;
-	components: (IComponent | UserInterfaceHandler<any>)[];
+	isConnectionOriented: boolean;
+	components: IComponent[];
+	defaultVisualizers?: Visualizer<any>[];
 }
 
 export enum ITransactionState {
@@ -97,7 +98,7 @@ export interface ITransaction {
 }
 
 export interface IVisualizationItem<T> {
-	handlerId: number;
+	visualizerId: number;
 	ui: IUserInterface;
 	value: T;
 	valueFunction?: T;

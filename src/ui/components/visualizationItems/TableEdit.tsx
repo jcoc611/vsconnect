@@ -150,7 +150,7 @@ export class TableEdit extends AbstractItem<any[][]> {
 		valuePreview?: any,
 	) {
 		let item: IVisualizationItem<any> = {
-			handlerId: -1,
+			visualizerId: -1,
 			ui: component,
 			value,
 			valueFunction: (valueFunction === null)? undefined : valueFunction,

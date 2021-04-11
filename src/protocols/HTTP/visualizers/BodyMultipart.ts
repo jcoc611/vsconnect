@@ -1,13 +1,13 @@
 'use strict';
 
 import { UITypes, ITransaction, IUserInterface, IContext, BytesValue } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, setKeyValueComponent, hasKeyValueComponent, deleteComponent } from "../../../utils/transactionTools";
 
 const multipartMIME = 'multipart/form-data; boundary=<calculated when sent>';
 
 export type MultipartValue = [string, BytesValue, string][];
-export class BodyMultipartComponent extends UserInterfaceHandler<MultipartValue> {
+export class BodyMultipartVisualizer extends Visualizer<MultipartValue> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		let valueCur = this.getValueFromTransaction(t, context);
 		return {

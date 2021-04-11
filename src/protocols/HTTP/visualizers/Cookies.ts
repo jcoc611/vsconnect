@@ -1,9 +1,9 @@
 import { UITypes, ITransaction, KeyValues, IUserInterface, IContext } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, getKeyValueComponent, setKeyValueComponent, getKeyValueComponents, deleteKeyValueComponent } from "../../../utils/transactionTools";
 import { StringFormats } from "../utils/StringFormats";
 
-export class CookiesComponent extends UserInterfaceHandler<KeyValues<string>> {
+export class CookiesVisualizer extends Visualizer<KeyValues<string>> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		let valueCurrent = this.getValueFromTransaction(t, context);
 		return {

@@ -115,7 +115,7 @@ class TransactionContent extends React.Component<TransactionContentProps, Transa
 
 		if (process.env.NODE_ENV === 'development') {
 			let itemDebug: IVisualizationItem<any> = {
-				handlerId: -1,
+				visualizerId: -1,
 				ui: { name: 'debug', type: UITypes.Object, location: 'extra' },
 				value: visualization
 			};

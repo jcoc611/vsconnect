@@ -1,13 +1,13 @@
 'use strict';
 
 import { UITypes, ITransaction, IUserInterface, IContext, KeyValues, BytesValue } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, getBinaryComponentSize, hasKeyValueComponent, getKeyValueComponent, setKeyValueComponent } from "../../../utils/transactionTools";
 import { getHeaderValue } from "../utils/HeaderUtils";
 import { Formats } from "../../../utils/Formats";
 import { StringFormats } from "../utils/StringFormats";
 
-export class BodyRawComponent extends UserInterfaceHandler<BytesValue> {
+export class BodyRawVisualizer extends Visualizer<BytesValue> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		let count: string | undefined;
 		let byteCount = getBinaryComponentSize(t, 'body');

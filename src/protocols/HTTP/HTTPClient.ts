@@ -11,7 +11,7 @@ import { gunzipSync, inflateSync, brotliDecompressSync } from 'zlib';
 import { ITransaction, KeyValues, ITransactionState, BytesValue } from "../../interfaces";
 import { getBinaryComponentValue, getComponent, hasComponent } from "../../utils/transactionTools";
 import { BodyUtils } from "./utils/BodyUtils";
-import { MultipartValue } from "./components/BodyMultipart";
+import { MultipartValue } from "./visualizers/BodyMultipart";
 import { objToHeaderValues, hasHeaderValue, getHeaderValue } from './utils/HeaderUtils';
 import { Formats } from '../../utils/Formats';
 import { StringFormats } from './utils/StringFormats';

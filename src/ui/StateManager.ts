@@ -34,7 +34,7 @@ export class StateManager {
 
 	private vscode: any;
 	private promiseStore: DelegatedPromiseStore = new DelegatedPromiseStore();
-	private uiHandlerPromiseId: { [handlerId: number]: number } = {};
+	private visualizerPromiseId: { [visualizerId: number]: number } = {};
 
 	private historyWalkCurrent?: LLNode<IVisualization>;
 
@@ -249,8 +249,8 @@ export class StateManager {
 			throw new Error('Cannot update UI if there is no current request');
 		}
 
-		if (vizItemChanged.handlerId === -1) {
-			throw new Error('Virtual UI has no handler, cannot process change for it.');
+		if (vizItemChanged.visualizerId === -1) {
+			throw new Error('Virtual UI has no visualizer id, cannot process change for it.');
 		}
 
 		let isCurrent = (tId === this.currentRequest.transaction.id);
@@ -285,14 +285,14 @@ export class StateManager {
 	): Promise<IVisualization | undefined> {
 		// Promise
 		// Cancels any pending updates to the same vizItem, to prevent staggering
-		if (this.uiHandlerPromiseId[vizItemChanged.handlerId] !== undefined) {
-			this.promiseStore.cancel(this.uiHandlerPromiseId[vizItemChanged.handlerId]);
+		if (this.visualizerPromiseId[vizItemChanged.visualizerId] !== undefined) {
+			this.promiseStore.cancel(this.visualizerPromiseId[vizItemChanged.visualizerId]);
 		}
 		let vizNewPromise = this.remoteCall({
 			type: ServiceActionTypes.HandleVisualizationChange,
 			params: [vizItemChanged, vizCur]
 		});
-		this.uiHandlerPromiseId[vizItemChanged.handlerId] = vizNewPromise.id;
+		this.visualizerPromiseId[vizItemChanged.visualizerId] = vizNewPromise.id;
 		let vizNew: IVisualization;
 		try {
 			vizNew = await vizNewPromise;
@@ -303,7 +303,7 @@ export class StateManager {
 				throw e;
 			}
 		}
-		delete this.uiHandlerPromiseId[vizItemChanged.handlerId];
+		delete this.visualizerPromiseId[vizItemChanged.visualizerId];
 		// Promise end
 
 		return vizNew;
@@ -586,7 +586,7 @@ export class StateManager {
 	private getTrackingDocId(tId: number, vizItem: IVisualizationItem<any>): number {
 		for (let docId of Object.keys(this.trackedTextDocuments)) {
 			let doc = this.trackedTextDocuments[Number(docId)];
-			if (doc.tId === tId && doc.vizItem.handlerId == vizItem.handlerId) {
+			if (doc.tId === tId && doc.vizItem.visualizerId == vizItem.visualizerId) {
 				return Number(docId);
 			}
 		}

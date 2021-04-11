@@ -2,9 +2,8 @@
 
 import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI, UITypes } from "./interfaces";
 import { ProtocolHandler } from "./ProtocolHandler";
-import { UserInterfaceHandler } from "./uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "./visualizers/Visualizer";
 import { EventEmitter } from "./utils/EventEmitter";
-import { UISimpleHandler } from "./uiHandlers/UISimpleHandler";
 
 import { TextDocument } from 'vscode';
 import { Store } from "./stores/Store";
@@ -42,8 +41,8 @@ export class Services extends EventEmitter {
 	/** @var protocols  map of protocol names to handlers */
 	private protocols: Map<string, ProtocolHandler> = new Map();
 
-	/** @var uiHandlers  list of user interface handlers */
-	private uiHandlers: UserInterfaceHandler<any>[] = [];
+	/** @var visualizers  list of visualizers */
+	private visualizers: Visualizer<any>[] = [];
 
 	private stores: Store<any>[] = [];
 	private storeDb: StoreDatabase;
@@ -76,7 +75,7 @@ export class Services extends EventEmitter {
 			// User selects one of the protocols (e.g. default one)
 			case ServiceActionTypes.GetNewRequest:
 				// - protocolHandler.getDefaultTransaction()
-				// - getVisualization(ITransaction) - matching UI handlers provide visualization
+				// - getVisualization(ITransaction) - matching visualizers provide visualization
 				return this.getDefaultRequest(...action.params);
 
 			// User clones a transaction from the history
@@ -198,6 +197,9 @@ export class Services extends EventEmitter {
 
 	// Adding protocols
 	addProtocol(name: string, handler: ProtocolHandler): void {
+		if (this.protocols.has(name))
+			throw new Error(`Duplicate protocol ${name}`);
+
 		handler.on('response', (response: ITransaction, sourceId?: number) => {
 			this.trigger('message', <ServiceAction> {
 				type: ServiceActionTypes.AppendResponse,
@@ -206,45 +208,12 @@ export class Services extends EventEmitter {
 		});
 
 		let metadata = handler.getMetadata();
-		for (let z = 0; z < metadata.components.length; z++) {
-			let component = metadata.components[z];
 
-			if (component instanceof UserInterfaceHandler) {
-				this.addUIHandler(component);
-				continue;
-			}
-
-			if (component.ui === undefined) {
-				continue;
-			}
-
-			let ui: IUserInterface;
-			if (typeof(component.ui) === "string") {
-				ui = {
-					type: DefaultComponentUI[component.type],
-					name: component.name,
-					location: component.ui,
-				}
-			} else {
-				ui = component.ui;
-			}
-
-			if (component.allowedValues && ui.allowedValues === undefined) {
-				ui.allowedValues = component.allowedValues;
-			}
-
-			if (component.components && ui.components === undefined) {
-				ui.components = component.components.map( (c) => ({
-					name: c.name,
-					type: DefaultComponentUI[c.type],
-					required: c.required,
-					default: c.default,
-					allowedValues: c.allowedValues,
-					location: ui.location,
-				}));
-			}
-
-			this.addUIHandler( new UISimpleHandler(name, ui) );
+		// Add default visualizers
+		if (metadata.defaultVisualizers)
+		{
+			for (let i = 0; i < metadata.defaultVisualizers.length; i++)
+				this.addVisualizer(metadata.defaultVisualizers[i]);
 		}
 
 		this.protocols.set(name, handler);
@@ -287,13 +256,13 @@ export class Services extends EventEmitter {
 			handler = this.getProtocolHandler(transaction.protocolId);
 		// }
 
-		handler.do(transaction, sourceId);
+		handler.send(transaction, sourceId);
 
 		this.getOrCreateSandbox(sourceId).addRequest(transaction);
 	}
 
-	addUIHandler(handler: UserInterfaceHandler<any>): void {
-		this.uiHandlers.push(handler);
+	addVisualizer(visualizer: Visualizer<any>): void {
+		this.visualizers.push(visualizer);
 	}
 
 	addStore(store: Store<any>): void {
@@ -305,17 +274,17 @@ export class Services extends EventEmitter {
 		let items: IVisualizationItem<any>[] = [];
 		let groupItems: { [key: string]: number } = {};
 
-		for (let i = 0; i < this.uiHandlers.length; i++) {
-			const handler = this.uiHandlers[i];
-			if (!handler.shouldDisplay(transaction, context)) {
+		for (let i = 0; i < this.visualizers.length; i++) {
+			const visualizer = this.visualizers[i];
+			if (!visualizer.shouldDisplay(transaction, context)) {
 				continue;
 			}
 
-			const ui = handler.getUI(transaction, context);
+			const ui = visualizer.getUI(transaction, context);
 			const viz: IVisualizationItem<any> = {
-				handlerId: i,
+				visualizerId: i,
 				ui,
-				value: handler.getValueFromTransaction(transaction, context)
+				value: visualizer.getValueFromTransaction(transaction, context)
 			};
 			if (ui.location === 'extra' && groupItems[ui.name] !== undefined) {
 				if (items[groupItems[ui.name]].ui.type == UITypes.OneOfMany) {
@@ -325,7 +294,7 @@ export class Services extends EventEmitter {
 					items[groupItems[ui.name]].value.push(viz);
 				} else {
 					items[groupItems[ui.name]] = {
-						handlerId: -1,
+						visualizerId: -1,
 						ui: {
 							location: 'extra',
 							type: UITypes.OneOfMany,
@@ -355,11 +324,11 @@ export class Services extends EventEmitter {
 		let tNew = vizCurrent.transaction;
 
 		// TODO: in certain cases, this is not enough. Issues when multiple components should
-		// recompute and the expected output is given by calling one or more handlers twice.
-		for (let handler of this.uiHandlers) {
-			if (handler.shouldRecompute(tNew, tNew)) {
-				tNew = handler.getTransactionFromValue(
-					handler.getValueFromTransaction(tNew, 'outgoing'),
+		// recompute and the expected output is given by calling one or more visualizers twice.
+		for (let visualizer of this.visualizers) {
+			if (visualizer.shouldRecompute(tNew, tNew)) {
+				tNew = visualizer.getTransactionFromValue(
+					visualizer.getValueFromTransaction(tNew, 'outgoing'),
 					tNew
 				);
 			}
@@ -380,14 +349,14 @@ export class Services extends EventEmitter {
 		vizCurrent: IVisualization
 	): IVisualization {
 		let tCurrent = vizCurrent.transaction;
-		let tNew = this.uiHandlers[vizItem.handlerId].getTransactionFromValue(vizItem.value, tCurrent);
+		let tNew = this.visualizers[vizItem.visualizerId].getTransactionFromValue(vizItem.value, tCurrent);
 
 		// TODO: in certain cases, this is not enough. Issues when multiple components should
-		// recompute and the expected output is given by calling one or more handlers twice.
-		for (let handler of this.uiHandlers) {
-			if (handler.shouldRecompute(tCurrent, tNew)) {
-				tNew = handler.getTransactionFromValue(
-					handler.getValueFromTransaction(tNew, 'outgoing'),
+		// recompute and the expected output is given by calling one or more visualizers twice.
+		for (let visualizer of this.visualizers) {
+			if (visualizer.shouldRecompute(tCurrent, tNew)) {
+				tNew = visualizer.getTransactionFromValue(
+					visualizer.getValueFromTransaction(tNew, 'outgoing'),
 					tNew
 				);
 			}
@@ -493,8 +462,8 @@ export class Services extends EventEmitter {
 		while (iOld < vizOld.length && iNew < vizNew.length) {
 			let itemOld = vizOld[iOld];
 			let itemNew = vizNew[iNew];
-			if (itemOld.handlerId == itemNew.handlerId) {
-				if (vizItemChanged !== undefined && itemNew.handlerId == vizItemChanged.handlerId) {
+			if (itemOld.visualizerId == itemNew.visualizerId) {
+				if (vizItemChanged !== undefined && itemNew.visualizerId == vizItemChanged.visualizerId) {
 					itemNew.valueFunction = vizItemChanged.valueFunction;
 					itemNew.valuePreview = vizItemChanged.valuePreview;
 				} else if (itemNew.ui.type === UITypes.OneOfMany) {
@@ -506,7 +475,7 @@ export class Services extends EventEmitter {
 				}
 				iOld++;
 				iNew++;
-			} else if (itemOld.handlerId < itemNew.handlerId) {
+			} else if (itemOld.visualizerId < itemNew.visualizerId) {
 				iOld++;
 			} else {
 				iNew++;

@@ -1,11 +1,11 @@
 'use strict';
 
 import { UITypes, ITransaction, IUserInterface, IContext, KeyValues } from "../../../interfaces";
-import { UserInterfaceHandler } from "../../../uiHandlers/UserInterfaceHandler";
+import { Visualizer } from "../../../visualizers/Visualizer";
 import { hasComponent, getComponent, setComponent, getBinaryComponentString } from "../../../utils/transactionTools";
 import { getHeaderValue } from "../utils/HeaderUtils";
 
-export class BodyPreviewComponent extends UserInterfaceHandler<string> {
+export class BodyPreviewVisualizer extends Visualizer<string> {
 	getUI(t: ITransaction, context: IContext): IUserInterface {
 		return {
 			type: UITypes.HTML,
