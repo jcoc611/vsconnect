@@ -1,12 +1,13 @@
 import * as React from 'react';
 
-import { IVisualization, IVisualizationItem, ITransaction, OpenTextDocumentOptions, BytesValue } from '../../interfaces';
+import { IVisualization, IVisualizationItem, ITransaction, OpenTextDocumentOptions, BytesValue, ProtocolShortMetadata } from '../../interfaces';
 import { Transaction } from './Transaction';
 // import { Interpreter } from './InterpreterHacky';
 
 interface ConsoleSurfaceProps {
 	sendRequest: (tId: number) => void;
 	setProtocol: (protocolId: string) => void;
+	setConnection: (connectionId?: number) => void;
 	updateUI: (vizItem: IVisualizationItem<any>, tId: number) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, vizId: number, vizItem: IVisualizationItem<BytesValue>) => void;
 	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
@@ -15,7 +16,7 @@ interface ConsoleSurfaceProps {
 
 	currentRequest: IVisualization;
 	history: IVisualization[];
-	allProtocols: string[];
+	allProtocols: ProtocolShortMetadata[];
 	rerunQueue?: IVisualization[];
 }
 
@@ -31,7 +32,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 		// const history = this.props.history;
 		const {
 			history, currentRequest, rerunQueue, allProtocols,
-			sendRequest, setProtocol, updateUI, getFunctionPreview,
+			sendRequest, setProtocol, setConnection, updateUI, getFunctionPreview,
 			rerun, clear,
 		} = this.props;
 
@@ -57,6 +58,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 
 				updateUI={(vizItem) => updateUI(vizItem, item.transaction.id!)}
 				setProtocol={setProtocol}
+				setConnection={setConnection}
 				sendCurrentRequest={() => sendRequest(item.transaction.id!)}
 				openTextDocument={this.cbOpenTextDocument(item)}
 				getFunctionPreview={getFunctionPreview} />;
@@ -76,6 +78,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 
 					updateUI={(vizItem) => null}
 					setProtocol={setProtocol}
+					setConnection={setConnection}
 					sendCurrentRequest={() => null}
 					openTextDocument={this.cbOpenTextDocument(item)}
 					getFunctionPreview={getFunctionPreview} />;
@@ -92,6 +95,7 @@ export class ConsoleSurface extends React.Component<ConsoleSurfaceProps> {
 
 					updateUI={(vizItem) => updateUI(vizItem, currentRequest.transaction.id!)}
 					setProtocol={setProtocol}
+					setConnection={setConnection}
 					sendCurrentRequest={() => sendRequest(currentRequest.transaction.id!)}
 					openTextDocument={this.cbOpenTextDocument(currentRequest)}
 					getFunctionPreview={getFunctionPreview} />

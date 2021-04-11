@@ -3,7 +3,7 @@ type Callback = (...params: any[]) => void;
 export class EventEmitter {
 	eventListeners: Map<string, Callback[]> = new Map();
 
-	on(eventName: string, callback: (...params: any[]) => void) {
+	on(eventName: string, callback: (...params: any[]) => void): void {
 		if ( !this.eventListeners.has(eventName) ) {
 			this.eventListeners.set(eventName, []);
 		}
@@ -11,7 +11,7 @@ export class EventEmitter {
 		this.eventListeners.get(eventName)!.push(callback);
 	}
 
-	off(eventName: string, callback: (...params: any[]) => void) {
+	off(eventName: string, callback: (...params: any[]) => void): void {
 		let listeners: Callback[] = this.eventListeners.get(eventName)!;
 		let listenersNew: Callback[] = [];
 		for (let listener of listeners) {
@@ -23,7 +23,7 @@ export class EventEmitter {
 		this.eventListeners.set(eventName, listenersNew);
 	}
 
-	trigger( eventName: string, ...params: any[] ) {
+	trigger( eventName: string, ...params: any[] ): void {
 		if ( !this.eventListeners.has(eventName) ) {
 			return;
 		}

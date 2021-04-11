@@ -61,6 +61,9 @@
 		"compile-extension": "webpack --mode production --config ./webpack.extension.config.js",
 		"compile-webview": "webpack --mode production --config ./webpack.webview.config.js",
 		"compile": "concurrently npm:compile-*",
+		"dev-compile-extension": "webpack --mode development --config ./webpack.extension.config.js",
+		"dev-compile-webview": "webpack --mode development --config ./webpack.webview.config.js",
+		"dev-compile": "concurrently npm:dev-compile-*",
 		"watch-extension": "webpack --watch --mode development --config ./webpack.extension.config.js",
 		"watch-webview": "webpack --watch --mode development --config ./webpack.webview.config.js",
 		"watch": "concurrently npm:watch-*"
@@ -73,6 +76,7 @@
 		"@types/react": "^16.14.5",
 		"@types/react-dom": "^16.9.12",
 		"@types/vscode": "^1.54.0",
+		"@types/ws": "^7.4.1",
 		"concurrently": "^5.3.0",
 		"ts-loader": "^6.2.2",
 		"tslint": "^5.20.1",
@@ -87,6 +91,7 @@
 		"form-data": "^3.0.1",
 		"iconv-lite": "^0.5.2",
 		"react": "^16.14.0",
-		"react-dom": "^16.14.0"
+		"react-dom": "^16.14.0",
+		"ws": "^7.4.4"
 	}
 }

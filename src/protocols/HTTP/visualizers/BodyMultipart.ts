@@ -40,7 +40,7 @@ export class BodyMultipartVisualizer extends Visualizer<MultipartValue> {
 	}
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
-		return (context === 'outgoing' && hasComponent(t, 'body'));
+		return (t.protocolId === 'HTTP' && context === 'outgoing' && hasComponent(t, 'body'));
 	}
 
 	shouldRecompute(tOld: ITransaction, tNew: ITransaction): boolean {

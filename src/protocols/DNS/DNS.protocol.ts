@@ -1,4 +1,4 @@
-import { ITransaction, KeyValues, ITransactionState, IProtocolMetadata, IComponentTypes, UITypes, IComponent } from '../../interfaces';
+import { ITransaction, KeyValues, ITransactionState, IProtocolMetadata, IComponentTypes, UITypes, IComponent, BytesValue } from '../../interfaces';
 
 import { ProtocolHandler } from '../../ProtocolHandler';
 import { getComponent } from "../../utils/transactionTools";
@@ -61,6 +61,7 @@ function resourceRecordsToTable(rr: IResourceRecord[]): any[][] {
 }
 
 export class DNSProtocol extends ProtocolHandler {
+	static ID = 'DNS';
 
 	static fromNativeResponse(tReq: ITransaction, msg: IMessage): ITransaction {
 		let shortStatus: string;
@@ -116,17 +117,13 @@ export class DNSProtocol extends ProtocolHandler {
 		return response;
 	}
 
-	async initialize(params: any[]): Promise<boolean> {
-		return true; // no setup needed
-	}
-
 	getMetadata(): IProtocolMetadata {
 		const questionComponents: IComponent[] = [
 			{
 				name: 'name',
 				type: IComponentTypes.String,
 				required: true,
-				default: '',
+				// default: '',
 			},
 			{
 				name: 'type',
@@ -138,7 +135,7 @@ export class DNSProtocol extends ProtocolHandler {
 					'MAILA',
 				],
 				required: true,
-				default: 'A',
+				// default: 'A',
 			},
 		];
 		const recordComponents: IComponent[] = [
@@ -146,7 +143,7 @@ export class DNSProtocol extends ProtocolHandler {
 				name: 'name',
 				type: IComponentTypes.String,
 				required: true,
-				default: '',
+				// default: '',
 			},
 			{
 				name: 'type',
@@ -156,19 +153,19 @@ export class DNSProtocol extends ProtocolHandler {
 					'WKS', 'PTR', 'HINFO', 'MINFO', 'MX', 'TXT',
 				],
 				required: true,
-				default: 'ALL',
+				// default: 'ALL',
 			},
 			{
 				name: 'ttl',
 				type: IComponentTypes.String,
 				required: true,
-				default: '',
+				// default: '',
 			},
 			{
 				name: 'record',
 				type: IComponentTypes.Object,
 				required: true,
-				default: null,
+				// default: null,
 			},
 		];
 
@@ -176,81 +173,65 @@ export class DNSProtocol extends ProtocolHandler {
 			name: 'id',
 			type: IComponentTypes.String,
 			required: false,
-			default: '',
 		};
 		const componentOperation: IComponent = {
 			name: 'operation',
 			type: IComponentTypes.Enum,
 			required: true,
 			allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
-			default: 'QUERY',
-			
 		};
 		const componentHost: IComponent = {
 			name: 'host',
 			type: IComponentTypes.String,
 			required: true,
-			default: '',	
 		};
 		const componentAuthoritative: IComponent = {
 			name: 'authoritative',
 			type: IComponentTypes.Boolean,
 			required: false,
-			default: false,
-			
 		};
 		const componentTruncated: IComponent = {
 			name: 'truncated',
 			type: IComponentTypes.Boolean,
 			required: true,
-			default: false,
-			
 		};
 		const componentUseRecursion: IComponent = {
 			name: 'use recursion',
 			type: IComponentTypes.Boolean,
 			required: false,
-			default: false,
-			
 		};
 		const componentCanRecurse: IComponent = {
 			name: 'can recurse',
 			type: IComponentTypes.Boolean,
 			required: false,
-			default: false,
 		};
 		const componentQuestions: IComponent = {
 			name: 'questions',
 			type: IComponentTypes.Table,
 			required: false,
-			default: [],
 			components: questionComponents,
 		};
 		const componentAnswers: IComponent = {
 			name: 'answers',
 			type: IComponentTypes.Table,
 			required: false,
-			default: [],
 			components: recordComponents,
-			
 		};
 		const componentNsRecords: IComponent = {
 			name: 'nsRecords',
 			type: IComponentTypes.Table,
 			required: false,
-			default: [],
 			components: recordComponents,
 		};
 		const componentAdditionals: IComponent = {
 			name: 'additionals',
 			type: IComponentTypes.Table,
 			required: false,
-			default: [],
 			components: recordComponents,
 		};
 
 		return {
-			id: 'DNS',
+			id: DNSProtocol.ID,
 			isConnectionOriented: false,
 			components: [
 				componentId,
@@ -266,7 +247,7 @@ export class DNSProtocol extends ProtocolHandler {
 				componentAdditionals,
 			],
 			defaultVisualizers: [
-				SimpleVisualizer.ForComponent('DNS', componentOperation, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentOperation, {
 					location: 'short',
 					type: UITypes.Enum,
 					name: 'operation',
@@ -274,50 +255,50 @@ export class DNSProtocol extends ProtocolHandler {
 					allowedValues: [ 'QUERY', 'IQUERY', 'STATUS' ],
 					contextType: 'outgoing',
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentHost, 'short'),
-				SimpleVisualizer.ForComponent('DNS', componentAuthoritative, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentHost, 'short'),
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentAuthoritative, {
 					location: 'short',
 					name: 'authoritative',
 					type: UITypes.Boolean,
 					contextType: 'incoming'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentTruncated, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentTruncated, {
 					location: 'short',
 					name: 'truncated',
 					type: UITypes.Boolean,
 					contextType: 'incoming'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentUseRecursion, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentUseRecursion, {
 					location: 'short',
 					name: 'use recursion',
 					type: UITypes.Boolean,
 					contextType: 'outgoing'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentCanRecurse, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentCanRecurse, {
 					location: 'short',
 					name: 'can recurse',
 					type: UITypes.Boolean,
 					contextType: 'incoming'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentQuestions, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentQuestions, {
 					location: 'extra',
 					name: 'questions',
 					type: UITypes.Table,
 					contextType: 'outgoing'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentAnswers, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentAnswers, {
 					location: 'extra',
 					name: 'answers',
 					type: UITypes.Table,
 					contextType: 'incoming'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentNsRecords, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentNsRecords, {
 					location: 'extra',
 					name: 'nsRecords',
 					type: UITypes.Table,
 					contextType: 'incoming'
 				}),
-				SimpleVisualizer.ForComponent('DNS', componentAdditionals, {
+				SimpleVisualizer.ForComponent(DNSProtocol.ID, componentAdditionals, {
 					location: 'extra',
 					name: 'additionals',
 					type: UITypes.Table,
@@ -340,5 +321,27 @@ export class DNSProtocol extends ProtocolHandler {
 		client.queryMulti(questions).then((msg) => {
 			this.trigger('response', DNSProtocol.fromNativeResponse(tReq, msg), sourceId);
 		});
+	}
+
+	getDefaultTransaction(connectionId?: number): ITransaction {
+		return {
+			protocolId: DNSProtocol.ID,
+			connectionId,
+			state: ITransactionState.Pending,
+			shortStatus: '',
+			components: {
+				'id': '',
+				'operation': 'QUERY',
+				'host': '',
+				// 'authoritative': false,
+				// 'truncated': false,
+				'use recursion': false,
+				// 'can recurse': false,
+				'questions': [],
+				'answers': [],
+				'nsRecords': [],
+				'additionals': [],
+			}
+		};
 	}
 }

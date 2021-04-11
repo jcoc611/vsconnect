@@ -4,18 +4,29 @@ import { hasComponent, getComponent, setComponent, getBinaryComponentSize } from
 import { Formats } from "../utils/Formats";
 
 export class SimpleVisualizer<T> extends Visualizer<T> {
-	protected protocolId: string;
-	protected uiSpec: IUserInterface;
+	protected readonly protocolId: string;
+	protected readonly uiSpec: IUserInterface;
 
-	constructor(protocolId: string, uiSpec: IUserInterface) {
+	/** 
+	 * @field If true, only displays when there is a connection. If false, only displays when there isn't a connection.
+	 * If undefined, always displays.
+	 */
+	protected readonly requireConnection?: boolean;
+
+	constructor(protocolId: string, uiSpec: IUserInterface, requireConnection?: boolean) {
 		super()
 
 		this.protocolId = protocolId;
 		this.uiSpec = uiSpec;
+		this.requireConnection = requireConnection;
 	}
 
-	static ForComponent<T>(protocolId: string, component: IComponent, defaultUI: IUserInterface | "short" | "extra") : Visualizer<T>
-	{
+	static ForComponent<T>(
+		protocolId: string,
+		component: IComponent,
+		defaultUI: IUserInterface | "short" | "extra",
+		requireConnection?: boolean
+	) : Visualizer<T> {
 		let ui: IUserInterface;
 		if (typeof(defaultUI) === "string") {
 			ui = {
@@ -36,13 +47,13 @@ export class SimpleVisualizer<T> extends Visualizer<T> {
 				name: c.name,
 				type: DefaultComponentUI[c.type],
 				required: c.required,
-				default: c.default,
+				// default: c.default,
 				allowedValues: c.allowedValues,
 				location: ui.location,
 			}));
 		}
 
-		return new SimpleVisualizer<T>(protocolId, ui);
+		return new SimpleVisualizer<T>(protocolId, ui, requireConnection);
 	}
 
 	getUI(t: ITransaction, context: IContext): IUserInterface {
@@ -69,6 +80,11 @@ export class SimpleVisualizer<T> extends Visualizer<T> {
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
 		if (t.protocolId !== this.protocolId) {
+			return false;
+		}
+
+		if ((this.requireConnection === true && !t.connectionId)
+			|| (this.requireConnection === false && t.connectionId)) {
 			return false;
 		}
 

@@ -1,7 +1,7 @@
 'use strict';
 
 import { ProtocolHandler } from '../../ProtocolHandler';
-import { ITransaction, IProtocolMetadata, IComponentTypes, UITypes, BytesValue, IComponent } from '../../interfaces';
+import { ITransaction, IProtocolMetadata, IComponentTypes, UITypes, BytesValue, IComponent, ITransactionState } from '../../interfaces';
 
 import { HTTPClient, getDefaultTimeout } from './HTTPClient';
 
@@ -20,9 +20,7 @@ import { BodyRawVisualizer } from './visualizers/BodyRaw';
 import { SimpleVisualizer } from '../../visualizers/SimpleVisualizer';
 
 export class HTTP extends ProtocolHandler {
-	async initialize(params: any[]): Promise<boolean> {
-		return true; // no setup needed
-	}
+	static ID = 'HTTP';
 
 	getMetadata(): IProtocolMetadata {
 		const componentVerb: IComponent = {
@@ -34,32 +32,26 @@ export class HTTP extends ProtocolHandler {
 				'DELETE', 'CONNECT', 'OPTIONS',
 				'TRACE', 'PATCH'
 			],
-			default: 'GET',
 		};
 		const componentHost: IComponent = {
 			name: 'host',
 			type: IComponentTypes.String,
 			required: true,
-			default: ''
 		};
 		const componentPath: IComponent = {
 			name: 'path',
 			type: IComponentTypes.String,
 			required: true,
-			default: ''
 		};
 		const componentTLS: IComponent = {
 			name: 'tls',
 			type: IComponentTypes.Object,
 			required: true,
-			default: {
-				enabled: false
-			},
 			components: [
 				{
 					name: 'enabled',
 					type: IComponentTypes.Boolean,
-					default: false,
+					// default: false,
 					required: true
 				},
 				// TODO versions, cipher suites
@@ -69,42 +61,30 @@ export class HTTP extends ProtocolHandler {
 			name: 'body',
 			type: IComponentTypes.Bytes,
 			required: true,
-			default: { type: 'empty' },
 		};
 		const componentHeaders: IComponent = {
 			name: 'headers',
 			type: IComponentTypes.KeyValues,
 			required: false,
-			default: [
-				// Hard-coded common chrome user agent.
-				// TODO: better UI for selecting alternatives.
-				['User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'],
-				['Content-Length', 'auto'],
-			],
 		};
 		const componentVersion: IComponent = {
 			name: 'version',
 			type: IComponentTypes.String,
 			required: true,
-			default: '1.1'
 		};
 		const componentDuration: IComponent = {
 			name: 'duration',
 			type: IComponentTypes.String,
 			required: false,
-			default: '',
 		};
 		const componentOptions: IComponent = {
 			name: 'options',
 			type: IComponentTypes.KeyValues,
 			required: false,
-			default: [
-				['timeout', getDefaultTimeout().toString() ]
-			],
 		};
 
 		return {
-			id: 'HTTP',
+			id: HTTP.ID,
 			isConnectionOriented: false,
 			components: [
 				componentVerb,
@@ -119,13 +99,13 @@ export class HTTP extends ProtocolHandler {
 			],
 			defaultVisualizers: [
 				// short
-				SimpleVisualizer.ForComponent('HTTP', componentVerb, 'short'),
+				SimpleVisualizer.ForComponent(HTTP.ID, componentVerb, 'short'),
 				// for requests only:
 				new URLVisualizer(),
 				new TLSVisualizer(),
 				// for responses only:
 				new StatusTextVisualizer(),
-				SimpleVisualizer.ForComponent('HTTP', componentDuration, {
+				SimpleVisualizer.ForComponent(HTTP.ID, componentDuration, {
 					name: 'duration',
 					location: 'short',
 					type: UITypes.String,
@@ -139,11 +119,11 @@ export class HTTP extends ProtocolHandler {
 				new BodyRawVisualizer(),
 				new BodyBinaryVisualizer(),
 				new BodyPreviewVisualizer(),
-				SimpleVisualizer.ForComponent('HTTP', componentHeaders, 'extra'),
+				SimpleVisualizer.ForComponent(HTTP.ID, componentHeaders, 'extra'),
 				new CookiesVisualizer(),
 				new AuthBasicVisualizer(),
 				new AuthOAuth1Visualizer(),
-				SimpleVisualizer.ForComponent('HTTP', componentOptions, 'extra'),
+				SimpleVisualizer.ForComponent(HTTP.ID, componentOptions, 'extra'),
 			]
 		};
 	}
@@ -157,5 +137,32 @@ export class HTTP extends ProtocolHandler {
 				this.trigger('response', tRes, sourceId);
 			}
 		} );
+	}
+
+	getDefaultTransaction(connectionId?: number): ITransaction {
+		return {
+			protocolId: HTTP.ID,
+			connectionId,
+			state: ITransactionState.Pending,
+			shortStatus: '',
+			components: {
+				'verb': 'GET',
+				'host': '',
+				'path': '',
+				'tls': { enabled: false },
+				'body': <BytesValue> { type: 'empty' },
+				'headers': <[string, string][]> [
+					// Hard-coded common chrome user agent.
+					// TODO: better UI for selecting alternatives.
+					['User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'],
+					['Content-Length', 'auto'],
+				],
+				'version': '1.1',
+				'duration': '',
+				'options': <[string, string][]> [
+					['timeout', getDefaultTimeout().toString() ]
+				],
+			}
+		};
 	}
 }

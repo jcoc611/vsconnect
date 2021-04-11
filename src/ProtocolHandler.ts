@@ -2,42 +2,23 @@ import { ITransaction, ITransactionState, IProtocolMetadata } from './interfaces
 import { EventEmitter } from './utils/EventEmitter';
 
 export abstract class ProtocolHandler extends EventEmitter {
-	serviceMethods: Set<string> = new Set( [ 'do' ] );
-	protected connections: any[] = [];
+	serviceMethods: Set<string> = new Set( [ 'send' ] );
 
-	abstract initialize(params: any[]): Promise<boolean>;
 	abstract send(transaction: ITransaction, sourceId?: number): void;
-
 	abstract getMetadata(): IProtocolMetadata;
+	abstract getDefaultTransaction(connectionId?: number): ITransaction;
 
-	connect(to: ITransaction): number {
-		// Cannot connect, not connection-oriented
-		return -1;
+	on(eventName: 'response', callback: (response: ITransaction, sourceId?: number) => void): void;
+	on(eventName: 'connected', callback: (connectionId: number, sourceId?: number) => void): void;
+	on(eventName: 'disconnected', callback: (connectionId: number, sourceId?: number) => void): void;
+	on(eventName: string, callback: (...params: any[]) => void): void {
+		return super.on(eventName, callback);
 	}
 
-	disconnect(from: number) {
-		if (from < 0 || from >= this.connections.length) {
-			throw new Error(`Cannot disconnect from non-existent connection ${from}`);
-		}
-
-		this.connections.splice(from, 1);
-	}
-
-	getDefaultTransaction(): ITransaction {
-		let meta = this.getMetadata();
-		let components: { [name: string]: any } = {};
-
-		for (let componentDefinition of meta.components) {
-			if (componentDefinition.default !== undefined) {
-				components[componentDefinition.name] = componentDefinition.default;
-			}
-		}
-
-		return {
-			protocolId: meta.id,
-			state: ITransactionState.Pending,
-			shortStatus: '',
-			components
-		}
+	trigger(eventName: 'response', response: ITransaction, sourceId?: number): void;
+	trigger(eventName: 'connected', connectionId: number, sourceId?: number): void;
+	trigger(eventName: 'disconnected', connectionId: number, sourceId?: number): void;
+	trigger(eventName: string, ...params: any[]): void {
+		return super.trigger(eventName, ...params);
 	}
 }

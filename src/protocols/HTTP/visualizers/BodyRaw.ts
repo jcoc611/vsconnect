@@ -32,7 +32,7 @@ export class BodyRawVisualizer extends Visualizer<BytesValue> {
 	}
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
-		return hasComponent(t, 'body');
+		return t.protocolId === 'HTTP' && hasComponent(t, 'body');
 	}
 
 	getTransactionFromValue(valueNew: BytesValue, tCurrent: ITransaction): ITransaction {

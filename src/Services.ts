@@ -1,6 +1,6 @@
 'use strict';
 
-import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI, UITypes } from "./interfaces";
+import { ITransaction, IUserInterface, IVisualization, IVisualizationItem, ServiceAction, ServiceActionTypes, IContext, DefaultComponentUI, UITypes, ProtocolShortMetadata } from "./interfaces";
 import { ProtocolHandler } from "./ProtocolHandler";
 import { Visualizer } from "./visualizers/Visualizer";
 import { EventEmitter } from "./utils/EventEmitter";
@@ -41,6 +41,8 @@ export class Services extends EventEmitter {
 	/** @var protocols  map of protocol names to handlers */
 	private protocols: Map<string, ProtocolHandler> = new Map();
 
+	private protocolConnections: { [protocolId: string]: Set<number> } = {};
+
 	/** @var visualizers  list of visualizers */
 	private visualizers: Visualizer<any>[] = [];
 
@@ -76,7 +78,8 @@ export class Services extends EventEmitter {
 			case ServiceActionTypes.GetNewRequest:
 				// - protocolHandler.getDefaultTransaction()
 				// - getVisualization(ITransaction) - matching visualizers provide visualization
-				return this.getDefaultRequest(...action.params);
+				const [protocolId, connectionId] = action.params;
+				return this.getDefaultRequest(protocolId, connectionId);
 
 			// User clones a transaction from the history
 			// User reruns a transaction (with possibly different viz)
@@ -97,6 +100,14 @@ export class Services extends EventEmitter {
 				// Response transaction is converted into Visualization and sent to UI
 				const [ tRes ] = action.params;
 				return this.onResponse(tRes, sourceId);
+
+			case ServiceActionTypes.GetConnectionState:
+				// return true iff connectionIdQ is still connected
+				const [ protocolIdQ, connectionIdQ ] = action.params;
+				if (this.protocolConnections[protocolIdQ] === undefined)
+					return false;
+				else
+					return (this.protocolConnections[protocolIdQ].has(connectionIdQ));
 
 			// User opens a BinaryStringInput in a new text document
 			case ServiceActionTypes.OpenTextDocument:
@@ -196,9 +207,10 @@ export class Services extends EventEmitter {
 	}
 
 	// Adding protocols
-	addProtocol(name: string, handler: ProtocolHandler): void {
-		if (this.protocols.has(name))
-			throw new Error(`Duplicate protocol ${name}`);
+	addProtocol(handler: ProtocolHandler): void {
+		let metadata = handler.getMetadata();
+		if (this.protocols.has(metadata.id))
+			throw new Error(`Duplicate protocol ${metadata.id}`);
 
 		handler.on('response', (response: ITransaction, sourceId?: number) => {
 			this.trigger('message', <ServiceAction> {
@@ -206,8 +218,28 @@ export class Services extends EventEmitter {
 				params: [ this.onResponse(response, sourceId) ]
 			}, sourceId);
 		});
+		handler.on('connected', (connectionId: number, sourceId?: number) => {
+			if (this.protocolConnections[metadata.id] === undefined)
+				this.protocolConnections[metadata.id] = new Set<number>();
 
-		let metadata = handler.getMetadata();
+			this.protocolConnections[metadata.id].add(connectionId);
+			this.trigger('message', <ServiceAction> {
+				type: ServiceActionTypes.AddConnection,
+				params: [ metadata.id, connectionId ]
+			}, sourceId);
+		});
+		handler.on('disconnected', (connectionId: number, sourceId?: number) => {
+			if (this.protocolConnections[metadata.id] === undefined
+				|| !this.protocolConnections[metadata.id].has(connectionId)) {
+					throw new Error("Unexpected connection.");
+			}
+
+			this.protocolConnections[metadata.id].delete(connectionId);
+			this.trigger('message', <ServiceAction> {
+				type: ServiceActionTypes.RemoveConnection,
+				params: [ metadata.id, connectionId ]
+			}, sourceId);
+		});
 
 		// Add default visualizers
 		if (metadata.defaultVisualizers)
@@ -216,7 +248,7 @@ export class Services extends EventEmitter {
 				this.addVisualizer(metadata.defaultVisualizers[i]);
 		}
 
-		this.protocols.set(name, handler);
+		this.protocols.set(metadata.id, handler);
 	}
 
 	getProtocolHandler(name: string): ProtocolHandler {
@@ -228,12 +260,27 @@ export class Services extends EventEmitter {
 		return handler;
 	}
 
-	getAllProtocols(): string[] {
-		return Array.from( this.protocols.keys() );
+	getAllProtocols(): ProtocolShortMetadata[] {
+		let protocolsMeta : ProtocolShortMetadata[] = [];
+
+		for (let handler of this.protocols.values()) {
+			let metadata = handler.getMetadata();
+			if (metadata.isConnectionOriented) {
+				protocolsMeta.push({
+					id: metadata.id,
+					isConnectionOriented: true,
+					connections: this.getProtocolConnections(metadata.id),
+				});
+			} else {
+				protocolsMeta.push({ id: metadata.id, isConnectionOriented: false });
+			}
+		}
+
+		return protocolsMeta;
 	}
 
-	getDefaultRequest(protocolId: string): IVisualization {
-		let tDefault = this.getProtocolHandler(protocolId).getDefaultTransaction();
+	getDefaultRequest(protocolId: string, connectionId?: number): IVisualization {
+		let tDefault = this.getProtocolHandler(protocolId).getDefaultTransaction(connectionId);
 		tDefault.id = this.tCount++;
 
 		for (let store of this.stores) {
@@ -385,6 +432,17 @@ export class Services extends EventEmitter {
 		}
 
 		return this.getVisualization('incoming', tResponse);
+	}
+
+	private getProtocolConnections(protocolId: string) : number[] {
+		let protocolConnections: number[] = [];
+		if (this.protocolConnections[protocolId] === undefined)
+			return protocolConnections;
+
+		for (let connectionId of this.protocolConnections[protocolId]) {
+			protocolConnections.push(connectionId);
+		}
+		return protocolConnections;
 	}
 
 ////#region Scripting viz helpers

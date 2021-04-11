@@ -20,7 +20,7 @@ export class BodyUrlencodedVisualizer extends Visualizer<KeyValues<string>> {
 	}
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
-		return context === 'outgoing' && hasComponent(t, 'body');
+		return t.protocolId === 'HTTP' && context === 'outgoing' && hasComponent(t, 'body');
 	}
 
 	getTransactionFromValue(valueNew: KeyValues<string>, tCurrent: ITransaction): ITransaction {

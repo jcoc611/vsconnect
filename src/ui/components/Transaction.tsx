@@ -3,18 +3,20 @@
 import * as React from 'react';
 import * as classNames from 'classnames';
 
-import { IVisualization, IVisualizationItem, ITransaction, ITransactionState, UITypes, OpenTextDocumentOptions, BytesValue } from '../../interfaces';
+import { IVisualization, IVisualizationItem, ITransaction, ITransactionState, UITypes, OpenTextDocumentOptions, BytesValue, ProtocolShortMetadata } from '../../interfaces';
 import { VisualizationItem } from './VisualizationItem';
 import { Dropdown } from './visualizationItems/Dropdown';
+import { DropdownConnections } from './DropdownConnections';
 
 interface TransactionProps {
 	sendCurrentRequest: () => void;
 	setProtocol: (protocolId: string) => void;
+	setConnection: (connectionId?: number) => void;
 	updateUI: (vizItem: IVisualizationItem<any>) => void;
 	openTextDocument: (docOptions: OpenTextDocumentOptions, vizItem: IVisualizationItem<BytesValue>) => void;
 	getFunctionPreview: (command: string) => Promise<IVisualizationItem<any> | null>;
 
-	allProtocols: string[];
+	allProtocols: ProtocolShortMetadata[];
 
 	visualization: IVisualization;
 	readOnly: boolean;
@@ -198,22 +200,37 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 		const { isExpanded } = this.state;
 		const {
 			visualization, index, readOnly, isCurrent, allProtocols,
-			updateUI, setProtocol, sendCurrentRequest, openTextDocument, getFunctionPreview
+			updateUI, setProtocol, setConnection, sendCurrentRequest, openTextDocument, getFunctionPreview
 		} = this.props;
 		const type = (visualization.context === 'incoming')? 'res': 'req';
 
 		let itemsExtra: IVisualizationItem<any>[] = [];
 		let short: JSX.Element[] = [];
+		let allProtocolIds: string[] = allProtocols.map((protocolMeta) => protocolMeta.id);
+		let protocolMetaThis = this.protocolMetaThis(allProtocols, visualization.transaction.protocolId);
 
 		if (visualization.context === 'outgoing') {
 			short.push(<Dropdown name='Protocol' key='Protocol'
 				location={'short'}
 				value={visualization.transaction.protocolId}
-				allowedValues={allProtocols} readOnly={!isCurrent} onChange={setProtocol}
+				allowedValues={allProtocolIds} readOnly={!isCurrent} onChange={setProtocol}
 				getFunctionPreview={getFunctionPreview} />);
+
+			if (protocolMetaThis.isConnectionOriented) {
+				short.push(<DropdownConnections key='Connection'
+					value={visualization.transaction.connectionId}
+					connectionsAvailable={protocolMetaThis.connections}
+					onChange={setConnection} isReadOnly={!isCurrent} />);
+			}
 		} else {
 			short.push(<span className='protocol' key='Protocol'>
 				{visualization.transaction.protocolId}</span>);
+
+			if (protocolMetaThis.isConnectionOriented && visualization.transaction.connectionId) {
+				short.push(<span className='protocol' key='Connection'>
+					{DropdownConnections.renderConnectionItem(protocolMetaThis.connections, visualization.transaction.connectionId)}
+				</span>);
+			}
 		}
 
 		for (let item of visualization.items) {
@@ -228,7 +245,7 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			if (isCurrent)
 				short.push(<button className='btn-primary' onClick={sendCurrentRequest} key='send'
 					title='Send this request (Ctrl+Enter)'>send</button>);
-			else
+			else if (!protocolMetaThis.isConnectionOriented)
 				short.push(<button onClick={sendCurrentRequest} key='resend'
 					title='Resend this request (Ctrl+Enter)'>resend</button>);
 		}
@@ -252,9 +269,10 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 			<div className='expansionToggle' onClick={this.toggleExpanded}>{(isExpanded)? '🞃' : '🞂'}</div>
 			<div className='wrapper'>
 				<div className='consoleLine'>{short}</div>
-				{(isExpanded)?
+				{(isExpanded && itemsExtra.length !== 0)?
 					<TransactionContent
-						itemsExtra={itemsExtra} visualization={visualization}
+						itemsExtra={itemsExtra}
+						visualization={visualization}
 						readOnly={readOnly}
 						handleUIChange={updateUI}
 						getFunctionPreview={getFunctionPreview}
@@ -263,5 +281,18 @@ export class Transaction extends React.Component<TransactionProps, TransactionSt
 				}
 			</div>
 		</div>;
+	}
+
+	protocolMetaThis(protocols: ProtocolShortMetadata[], protocolThis: string): ProtocolShortMetadata {
+		for (let protocol of protocols) {
+			if (protocol.id === protocolThis)
+				return protocol;
+		}
+
+		// default (empty)
+		return {
+			id: '',
+			isConnectionOriented: false
+		};
 	}
 }

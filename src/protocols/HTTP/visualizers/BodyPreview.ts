@@ -16,7 +16,7 @@ export class BodyPreviewVisualizer extends Visualizer<string> {
 	}
 
 	shouldDisplay(t: ITransaction, context: IContext): boolean {
-		if (context !== 'incoming' || !hasComponent(t, 'headers'))
+		if (t.protocolId !== 'HTTP' || context !== 'incoming' || !hasComponent(t, 'headers'))
 			return false;
 
 		let contentType = getHeaderValue(

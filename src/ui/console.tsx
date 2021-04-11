@@ -15,10 +15,11 @@ state.getAllProtocols().then( (protocols) => {
 			<ConsoleSurface
 				history={ newHistory }
 				rerunQueue={ state.getRerunQueue() }
-				allProtocols={protocols}
-				currentRequest={state.getCurrentRequest()}
+				allProtocols={ protocols }
+				currentRequest={ state.getCurrentRequest() }
 				sendRequest={ state.sendRequest.bind(state) }
 				setProtocol={ state.setProtocol.bind(state) }
+				setConnection={ state.setConnection.bind(state) }
 				updateUI={ state.updateUI.bind(state) }
 				openTextDocument={ state.openTextDocument.bind(state) }
 				getFunctionPreview={ state.getFunctionPreview.bind(state) }

@@ -1,6 +1,6 @@
 'use strict';
 
-import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes, BytesValue, ConsoleViewState } from "../interfaces";
+import { ITransaction, IServiceMessage, ServiceAction, IServiceCall, ServiceActionTypes, IVisualization, ITransactionState, IVisualizationItem, OpenTextDocumentOptions, UITypes, BytesValue, ConsoleViewState, ProtocolShortMetadata } from "../interfaces";
 import { DelegatedPromise, PromiseCancelledError } from "../utils/DelegatedPromise";
 import { ContextMenuContent, ContextMenuEvent } from "./components/ContextMenu";
 import { DelegatedPromiseStore } from "../utils/DelegatedPromiseStore";
@@ -30,7 +30,7 @@ export class StateManager {
 	private currentRequest?: IVisualization;
 
 	private lastProtocol: string = '';
-	private protocols?: string[];
+	private protocols?: ProtocolShortMetadata[];
 
 	private vscode: any;
 	private promiseStore: DelegatedPromiseStore = new DelegatedPromiseStore();
@@ -61,30 +61,65 @@ export class StateManager {
 					console.error(`Dropped response with ID ${message.promiseId}, promise not found.`);
 				}
 			} else if (message.type === 'call') {
-				if (message.action.type === ServiceActionTypes.AppendResponse) {
-					this.addResponse(message.action.params[0]);
-				} else if (message.action.type === ServiceActionTypes.TextDocumentChanged) {
-					const [ trackedDocId, contentNew ] = message.action.params;
-					let doc: ITrackedDocument = this.trackedTextDocuments[trackedDocId];
-					// Viz is undefined if update was meant for different panel
-					if (doc !== undefined) {
-						doc.vizItem.value = contentNew;
-						this.updateUI(doc.vizItem, doc.tId, true);
-					}
-				} else if (message.action.type === ServiceActionTypes.TextDocumentClosed) {
-					const [ trackedDocId ] = message.action.params;
-					delete this.trackedTextDocuments[trackedDocId];
-				} else if (message.action.type === ServiceActionTypes.SetWebviewId) {
-					const [ webviewId ] = message.action.params;
-					this.webviewId = webviewId;
-				} else if (message.action.type === ServiceActionTypes.SendRequest) {
-					const [ tId ] = message.action.params;
-					if (tId === -1)
-						this.sendRequest(this.currentRequest!.transaction.id!);
-					else
-						this.sendRequest(tId);
-				} else {
-					throw new Error(`UI received action call of unexpected type ${message.action.type}`);
+				switch (message.action.type)
+				{
+					case ServiceActionTypes.AppendResponse:
+						this.addResponse(message.action.params[0]);
+						break;
+				
+					case ServiceActionTypes.TextDocumentChanged:
+						const [ trackedDocIdChange, contentNew ] = message.action.params;
+						let doc: ITrackedDocument = this.trackedTextDocuments[trackedDocIdChange];
+						// Viz is undefined if update was meant for different panel
+						if (doc !== undefined) {
+							doc.vizItem.value = contentNew;
+							this.updateUI(doc.vizItem, doc.tId, true);
+						}
+						break;
+
+					case ServiceActionTypes.TextDocumentClosed:
+						const [ trackedDocIdClosed ] = message.action.params;
+						delete this.trackedTextDocuments[trackedDocIdClosed];
+						break;
+				
+					case ServiceActionTypes.SetWebviewId:
+						const [ webviewId ] = message.action.params;
+						this.webviewId = webviewId;
+						break;
+
+					case ServiceActionTypes.SendRequest:
+						const [ tId ] = message.action.params;
+						if (tId === -1)
+							this.sendRequest(this.currentRequest!.transaction.id!);
+						else
+							this.sendRequest(tId);
+						break;
+
+					case ServiceActionTypes.AddConnection:
+						const [ protocolIdNew, connectionIdNew ] = message.action.params;
+						this.addProtocolConnection(protocolIdNew, connectionIdNew);
+						if (this.currentRequest !== undefined
+							&& this.currentRequest.transaction.protocolId === protocolIdNew
+							&& !this.currentRequest.transaction.connectionId) {
+								this.setProtocol(protocolIdNew); // refreshes current request
+						}
+						this.triggerChange();
+							
+						break;
+
+					case ServiceActionTypes.RemoveConnection:
+						const [ protocolIdRemove, connectionIdRemove ] = message.action.params;
+						this.removeProtocolConnection(protocolIdRemove, connectionIdRemove);
+
+						if (this.currentRequest !== undefined
+							&& this.currentRequest.transaction.protocolId === protocolIdRemove
+							&& this.currentRequest.transaction.connectionId === connectionIdRemove) {
+								this.setProtocol(protocolIdRemove); // refreshes current request
+						}
+						break;
+
+					default:
+						throw new Error(`UI received action call of unexpected type ${message.action.type}`);
 				}
 			} else {
 				throw new Error(`Received message of unknown type`);
@@ -155,8 +190,7 @@ export class StateManager {
 			webviewId,
 			history: history.toArray(),
 			currentRequest,
-			lastProtocol, protocols,
-			// trackedTextDocuments
+			lastProtocol,
 		}));
 	}
 
@@ -169,12 +203,12 @@ export class StateManager {
 		callback( this.getHistory() );
 	}
 
-	async getAllProtocols(): Promise<string[]> {
+	async getAllProtocols(): Promise<ProtocolShortMetadata[]> {
 		if (this.protocols !== undefined) {
 			return this.protocols;
 		}
 
-		let protocols: string[] = await this.remoteCall({
+		let protocols: ProtocolShortMetadata[] = await this.remoteCall({
 			type: ServiceActionTypes.GetAllProtocols,
 			params: []
 		});
@@ -201,7 +235,6 @@ export class StateManager {
 			vizReq = this.currentRequest;
 			this.addRequest(this.currentRequest);
 			this.currentRequest = undefined;
-			await this.addNewRequest();
 		} else if (this.tIdInHistory[tId] !== undefined) {
 			// Resend old request - delete all responses for it
 			vizReq = this.tIdInHistory[tId].value;
@@ -217,17 +250,20 @@ export class StateManager {
 
 		this.lastProtocol = vizReq.transaction.protocolId;
 		this.historyWalkCurrent = undefined;
-		this.triggerChange();
 
 		await this.remoteCall({
 			type: ServiceActionTypes.DoTransaction,
 			params: [ vizReq.transaction ]
 		});
 
-		if (!isCurrent) {
+		if (isCurrent) {
+			await this.addNewRequest();
+		} else {
 			// Recompute fn of all after
 			this.recomputeAllAfter(this.tIdInHistory[tId]);
 		}
+
+		this.triggerChange();
 	}
 
 	async setProtocol(protocolId: string) {
@@ -235,9 +271,44 @@ export class StateManager {
 			throw new Error('Cannot set protocol if there is no current request');
 		}
 
-		this.currentRequest = await this.getNewRequest(protocolId);
+		let connectionId = this.getFirstProtocolConnection(protocolId);
+		this.currentRequest = await this.getNewRequest(protocolId, connectionId);
 		this.triggerChange();
 		window.scrollTo(0,document.body.scrollHeight);
+	}
+
+	hasProtocol(protocolId: string): boolean {
+		if (this.protocols === undefined)
+			throw new Error('Must getAllProtocols first!');
+
+		for (let protocolMeta of this.protocols) {
+			if (protocolMeta.id === protocolId)
+				return true;
+		}
+
+		return false;
+	}
+
+	getProtocolMeta(protocolId: string): ProtocolShortMetadata | null {
+		if (this.protocols === undefined)
+			throw new Error('Must getAllProtocols first!');
+
+		for (let protocolMeta of this.protocols) {
+			if (protocolMeta.id === protocolId)
+				return protocolMeta;
+		}
+
+		return null;
+	}
+
+	async setConnection(connectionId?: number) {
+		if (this.currentRequest === undefined) {
+			throw new Error('Cannot set protocol if there is no current request');
+		}
+
+		this.currentRequest = await this.getNewRequest(this.currentRequest.transaction.protocolId, connectionId);
+		this.triggerChange();
+		window.scrollTo(0, document.body.scrollHeight);
 	}
 
 	async updateUI(
@@ -415,26 +486,26 @@ export class StateManager {
 			items: [],
 		};
 
-		let protocols: string[] = await this.getAllProtocols();
+		let protocols: ProtocolShortMetadata[] = await this.getAllProtocols();
 		let defaultProtocol: string;
 
 		if (protocols.length === 0) {
 			throw new Error("No protocols!");
 		}
 
-		if (protocols.indexOf(this.lastProtocol) >= 0) {
+		if (this.hasProtocol(this.lastProtocol)) {
 			defaultProtocol = this.lastProtocol;
 		} else {
-			defaultProtocol = protocols[0];
+			defaultProtocol = protocols[0].id;
 		}
 
 		await this.setProtocol(defaultProtocol);
 	}
 
-	private getNewRequest(protocolId: string): Promise<IVisualization> {
+	private getNewRequest(protocolId: string, connectionId?: number): Promise<IVisualization> {
 		return this.remoteCall({
 			type: ServiceActionTypes.GetNewRequest,
-			params: [protocolId]
+			params: [protocolId, connectionId]
 		});
 	}
 
@@ -465,6 +536,34 @@ export class StateManager {
 		}
 
 		this.triggerChange();
+	}
+
+	private getFirstProtocolConnection(protocolId: string): number | undefined {
+		let protocolMeta = this.getProtocolMeta(protocolId);
+		if (protocolMeta === null || protocolMeta.isConnectionOriented === false || protocolMeta.connections.length === 0)
+			return undefined;
+
+		return protocolMeta.connections[0];
+	}
+
+
+	private addProtocolConnection(protocolId: string, connectionId: number): void {
+		let protocolMeta = this.getProtocolMeta(protocolId);
+		if (protocolMeta === null || protocolMeta.isConnectionOriented === false)
+			return;
+
+		if (protocolMeta.connections.indexOf(connectionId) >= 0)
+			return;
+
+		protocolMeta.connections.push(connectionId);
+	}
+
+	private removeProtocolConnection(protocolId: string, connectionId: number): void {
+		let protocolMeta = this.getProtocolMeta(protocolId);
+		if (protocolMeta === null || protocolMeta.isConnectionOriented === false)
+			return;
+
+		protocolMeta.connections = protocolMeta.connections.filter((id) => id !== connectionId);
 	}
 
 	private async revisualize(viz: IVisualization): Promise<IVisualization> {
@@ -602,11 +701,12 @@ export class StateManager {
 			this.history = LinkedList.fromCollection(prevState.history);
 			this.currentRequest = prevState.currentRequest;
 			this.lastProtocol = prevState.lastProtocol;
-			this.protocols = prevState.protocols;
-			// this.trackedTextDocuments = prevState.trackedTextDocuments;
-
+			
 			this.populateTIdInHistory();
-			this.triggerChange();
+			this.getAllProtocols().then((protocols) => {
+				this.protocols = protocols;
+				this.triggerChange();
+			});
 			return true;
 		}
 		return false;

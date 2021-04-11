@@ -66,7 +66,6 @@ export interface IComponent {
 	type: IComponentTypes;
 	required: boolean;
 
-	default: any;
 	allowedValues?: any[];
 	components?: IComponent[];
 }
@@ -77,6 +76,19 @@ export interface IProtocolMetadata {
 	components: IComponent[];
 	defaultVisualizers?: Visualizer<any>[];
 }
+
+interface IProtocolMetaConnectionless {
+	id: string;
+	isConnectionOriented: false;
+}
+
+interface IProtocolMetaConnection {
+	id: string;
+	isConnectionOriented: true;
+	connections: number[];
+}
+
+export type ProtocolShortMetadata = IProtocolMetaConnection | IProtocolMetaConnectionless;
 
 export enum ITransactionState {
 	Dummy,
@@ -139,6 +151,9 @@ export enum ServiceActionTypes {
 	// For webview
 	SetWebviewId,
 	SendRequest,
+	AppendResponse,
+	AddConnection,
+	RemoveConnection,
 
 	// For extension
 	GetAllProtocols,
@@ -147,7 +162,7 @@ export enum ServiceActionTypes {
 	HandleVisualizationChange,
 	DoTransaction,
 	VisualizeResponse,
-	AppendResponse,
+	GetConnectionState,
 
 	// Text Docs
 	OpenTextDocument,
@@ -169,6 +184,21 @@ interface SendCurrentRequestAction {
 	params: [number]
 }
 
+interface AppendResponseAction {
+	type: ServiceActionTypes.AppendResponse,
+	params: [IVisualization]
+}
+
+interface AddConnectionAction {
+	type: ServiceActionTypes.AddConnection,
+	params: [string, number] // [protocolId, connectionId]
+}
+
+interface RemoveConnectionAction {
+	type: ServiceActionTypes.RemoveConnection,
+	params: [string, number] // [protocolId, connectionId]
+}
+
 interface GetAllProtocolsAction {
 	type: ServiceActionTypes.GetAllProtocols;
 	params: []
@@ -176,7 +206,7 @@ interface GetAllProtocolsAction {
 
 interface GetNewRequestAction {
 	type: ServiceActionTypes.GetNewRequest;
-	params: [string]
+	params: [string, number?] // [protocolId, connectionId?]
 }
 
 interface RevisualizeAction {
@@ -199,9 +229,9 @@ interface VisualizeResponseAction {
 	params: [ITransaction]
 }
 
-interface AppendResponseAction {
-	type: ServiceActionTypes.AppendResponse,
-	params: [IVisualization]
+interface GetConnectionStateAction {
+	type: ServiceActionTypes.GetConnectionState,
+	params: [string, number] // [protocolId, connectionId]
 }
 
 export interface OpenTextDocumentOptions {
@@ -241,13 +271,16 @@ interface ClearSandboxAction {
 export type ServiceAction = (
 	SetWebviewIdAction
 	| SendCurrentRequestAction
+	| AppendResponseAction
+	| AddConnectionAction
+	| RemoveConnectionAction
 	| GetAllProtocolsAction
 	| GetNewRequestAction
 	| RevisualizeAction
 	| HandleVisualizationChangeAction
 	| DoTransactionAction
 	| VisualizeResponseAction
-	| AppendResponseAction
+	| GetConnectionStateAction
 	| OpenTextDocumentAction
 	| TextDocumentChangedAction
 	| TextDocumentClosedAction
@@ -275,9 +308,6 @@ export interface ConsoleViewState {
 	history: IVisualization[];
 	currentRequest: IVisualization;
 	lastProtocol: string;
-	protocols?: string[];
-	//  TODO: need to save and restore this in backend
-	// trackedTextDocuments: { [key: number]: IVisualizationItem<BytesValue> };
 }
 
 // Stores

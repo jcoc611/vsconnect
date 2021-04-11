@@ -408,6 +408,21 @@ textarea {
 	filter: brightness(1.5);
 }
 
+/** connections */
+.symbol-connected {
+	color: var(--vscode-terminal-ansiGreen) !important;
+	vertical-align: text-bottom;
+	display: inline !important;
+	padding: 0 !important;
+}
+
+.symbol-disconnected {
+	color: var(--vscode-terminal-ansiBrightRed) !important;
+	font-weight: bold;
+	display: inline !important;
+	padding: 0 !important;
+}
+
 /** dropdown */
 .dropdown-root {
 	display: inline-block;
@@ -427,7 +442,10 @@ textarea {
 	margin-right: 5px;
 	padding: 2px 5px;
 }
-
+.response .dropdown-control.disabled {
+	background: none;
+	border: none;
+}
 
 .dropdown-menu {
 	background-color: var(--vscode-editorSuggestWidget-background);
