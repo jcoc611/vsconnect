@@ -135,8 +135,11 @@ interface BytesFileValue {
 export type BytesValue = BytesStringValue | BytesFileValue | BytesEmptyValue;
 
 export enum ServiceActionTypes {
+	// For webview
 	SetWebviewId,
+	SendRequest,
 
+	// For extension
 	GetAllProtocols,
 	GetNewRequest,
 	Revisualize,
@@ -157,6 +160,11 @@ export enum ServiceActionTypes {
 
 interface SetWebviewIdAction {
 	type: ServiceActionTypes.SetWebviewId,
+	params: [number]
+}
+
+interface SendCurrentRequestAction {
+	type: ServiceActionTypes.SendRequest,
 	params: [number]
 }
 
@@ -202,9 +210,10 @@ export interface OpenTextDocumentOptions {
 	shouldSync: boolean;
 }
 
+/** UI requests a opening a new text document [options, transaction id] */
 interface OpenTextDocumentAction {
 	type: ServiceActionTypes.OpenTextDocument,
-	params: [OpenTextDocumentOptions]
+	params: [OpenTextDocumentOptions, number]
 }
 
 /** A text document synced with a BytesStringInput changed [input id, new content] */
@@ -230,6 +239,7 @@ interface ClearSandboxAction {
 
 export type ServiceAction = (
 	SetWebviewIdAction
+	| SendCurrentRequestAction
 	| GetAllProtocolsAction
 	| GetNewRequestAction
 	| RevisualizeAction

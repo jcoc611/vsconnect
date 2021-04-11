@@ -77,6 +77,12 @@ export class StateManager {
 				} else if (message.action.type === ServiceActionTypes.SetWebviewId) {
 					const [ webviewId ] = message.action.params;
 					this.webviewId = webviewId;
+				} else if (message.action.type === ServiceActionTypes.SendRequest) {
+					const [ tId ] = message.action.params;
+					if (tId === -1)
+						this.sendRequest(this.currentRequest!.transaction.id!);
+					else
+						this.sendRequest(tId);
 				} else {
 					throw new Error(`UI received action call of unexpected type ${message.action.type}`);
 				}
@@ -306,7 +312,7 @@ export class StateManager {
 	async openTextDocument(textDoc: OpenTextDocumentOptions, tId: number, vizItem: IVisualizationItem<BytesValue>) {
 		let textDocId: number = await this.remoteCall({
 			type: ServiceActionTypes.OpenTextDocument,
-			params: [textDoc]
+			params: [textDoc, tId]
 		});
 		this.trackedTextDocuments[textDocId] = { vizItem, tId };
 	}

@@ -17,6 +17,17 @@ export interface ServicesState {
 	storesData: string;
 }
 
+export interface TrackedDocument {
+	/** transaction id */
+	tId: number;
+
+	/** panel id */
+	sourceId: number;
+
+	/** pointer to actual doc */
+	document: TextDocument;
+}
+
 export class Services extends EventEmitter {
 	private static instance?: Services;
 
@@ -37,7 +48,7 @@ export class Services extends EventEmitter {
 	private stores: Store<any>[] = [];
 	private storeDb: StoreDatabase;
 
-	private trackedDocuments: { [key: number]: TextDocument } = {};
+	private trackedDocuments: { [key: number]: TrackedDocument } = {};
 	private trackedDocumentsCount: number = 0;
 
 	private sandboxes: { [key: number]: Sandbox } = {};
@@ -90,7 +101,8 @@ export class Services extends EventEmitter {
 
 			// User opens a BinaryStringInput in a new text document
 			case ServiceActionTypes.OpenTextDocument:
-				this.trigger('document:open', action.params[0]);
+				const [openTextDocumentOptions, tId] = action.params;
+				this.trigger('document:open', openTextDocumentOptions, tId, sourceId);
 				return this.trackedDocumentsCount;
 
 			// User makes a change on a BinaryStringInput synced with an open document
@@ -113,14 +125,24 @@ export class Services extends EventEmitter {
 		}
 	}
 
-	trackTextDocument(textDocument: TextDocument): void {
-		this.trackedDocuments[this.trackedDocumentsCount++] = textDocument;
+	getTrackedDocument(document: TextDocument) : TrackedDocument | null {
+		for (let trackedDoc of Object.values(this.trackedDocuments))
+		{
+			if (trackedDoc.document == document)
+				return trackedDoc;
+		}
+
+		return null;
+	}
+
+	trackTextDocument(textDocument: TextDocument, tId: number, sourceId: number): void {
+		this.trackedDocuments[this.trackedDocumentsCount++] = { document: textDocument, tId, sourceId };
 	}
 
 	textDocumentDidChange(textDocument: TextDocument): void {
 		for (let iStr of Object.keys(this.trackedDocuments)) {
 			let i = Number(iStr);
-			if (this.trackedDocuments[i] === textDocument) {
+			if (this.trackedDocuments[i].document === textDocument) {
 				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.TextDocumentChanged,
 					params: [
@@ -140,7 +162,7 @@ export class Services extends EventEmitter {
 	textDocumentDidOpen(textDocument: TextDocument): void {
 		for (let iStr of Object.keys(this.trackedDocuments)) {
 			let i = Number(iStr);
-			if (this.trackedDocuments[i] === textDocument) {
+			if (this.trackedDocuments[i].document === textDocument) {
 				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.TextDocumentChanged,
 					params: [
@@ -164,7 +186,7 @@ export class Services extends EventEmitter {
 
 		for (let iStr of Object.keys(this.trackedDocuments)) {
 			let i = Number(iStr);
-			if (this.trackedDocuments[i] === textDocument) {
+			if (this.trackedDocuments[i].document === textDocument) {
 				delete this.trackedDocuments[i];
 				this.trigger('message', <ServiceAction> {
 					type: ServiceActionTypes.TextDocumentClosed,

@@ -32,6 +32,7 @@
 	"icon": "static/icon.png",
 	"activationEvents": [
 		"onCommand:vsConnectClient.start",
+		"onCommand:vsConnectClient.sendCurrentRequest",
 		"onWebviewPanel:vsConnectClient"
 	],
 	"contributes": {
