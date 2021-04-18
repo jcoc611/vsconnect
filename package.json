@@ -3,7 +3,7 @@
 	"version": "0.3.1",
 	"main": "./dist/extension",
 	"engines": {
-		"vscode": "^1.54.0"
+		"vscode": "^1.55.0"
 	},
 	"repository": {
 		"type": "git",
@@ -87,7 +87,7 @@
 		"webpack-cli": "^3.3.12"
 	},
 	"dependencies": {
-		"classnames": "^2.3.1",
+		"classnames": "^2.2.6",
 		"form-data": "^3.0.1",
 		"iconv-lite": "^0.5.2",
 		"react": "^16.14.0",
