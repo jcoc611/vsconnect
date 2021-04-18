@@ -191,7 +191,7 @@ interface AppendResponseAction {
 
 interface AddConnectionAction {
 	type: ServiceActionTypes.AddConnection,
-	params: [string, number] // [protocolId, connectionId]
+	params: [string, number, number] // [protocolId, connectionId, tId that initiated connection]
 }
 
 interface RemoveConnectionAction {

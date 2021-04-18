@@ -218,14 +218,14 @@ export class Services extends EventEmitter {
 				params: [ this.onResponse(response, sourceId) ]
 			}, sourceId);
 		});
-		handler.on('connected', (connectionId: number, sourceId?: number) => {
+		handler.on('connected', (connectionId: number, tIdConnect: number, sourceId?: number) => {
 			if (this.protocolConnections[metadata.id] === undefined)
 				this.protocolConnections[metadata.id] = new Set<number>();
 
 			this.protocolConnections[metadata.id].add(connectionId);
 			this.trigger('message', <ServiceAction> {
 				type: ServiceActionTypes.AddConnection,
-				params: [ metadata.id, connectionId ]
+				params: [ metadata.id, connectionId, tIdConnect ]
 			}, sourceId);
 		});
 		handler.on('disconnected', (connectionId: number, sourceId?: number) => {

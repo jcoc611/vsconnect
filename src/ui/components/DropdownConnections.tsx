@@ -49,7 +49,7 @@ export class DropdownConnections extends React.Component<DropdownConnectionsProp
 		if (!connectionId) {
 			return <span>New connection</span>;
 		} else if (isDead) {
-			return <span><span className='symbol-disconnected'>X</span> {`Connection ${connectionId}`}</span>;
+			return <span><span className='symbol-disconnected'>x</span> {`Connection ${connectionId}`}</span>;
 		} else {
 			return <span><span className='symbol-connected'>●</span> {`Connection ${connectionId}`}</span>;
 		}
@@ -94,7 +94,10 @@ export class DropdownConnections extends React.Component<DropdownConnectionsProp
 
 	fireChangeEvent(newState: DropdownConnectionsState) {
 		if (newState.value !== this.state.value && this.props.onChange) {
-			this.props.onChange(newState.value)
+			if (!newState.value)
+				this.props.onChange();
+			else
+				this.props.onChange(newState.value)
 		}
 	}
 

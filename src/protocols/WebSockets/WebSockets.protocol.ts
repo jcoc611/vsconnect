@@ -114,7 +114,7 @@ export class WebSocketsProtocol extends ProtocolHandler
 				shouldCompress: false,
 			});
 			
-			connectionNew.on('connected', () => this.trigger('connected', connectionId, sourceId));
+			connectionNew.on('connected', () => this.trigger('connected', connectionId, t.id!, sourceId));
 			connectionNew.on('message', (tRes: ITransaction) => this.trigger('response', tRes, sourceId));
 			connectionNew.on('disconnected', () => this.trigger('disconnected', connectionId, sourceId));
 			connectionNew.initialize();

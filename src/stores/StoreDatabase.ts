@@ -4,9 +4,9 @@ import { IStoreItem } from "../interfaces";
 import { EventEmitter } from "../utils/EventEmitter";
 
 export class StoreDatabase extends EventEmitter {
-	private data: { [key: string]: IStoreItem<any>[] };
+	private data: { [storeId: string]: IStoreItem<any>[] };
 
-	constructor(dataInitial?: { [key: string]: IStoreItem<any>[] }) {
+	constructor(dataInitial?: { [storeId: string]: IStoreItem<any>[] }) {
 		super();
 
 		if (dataInitial !== undefined) {

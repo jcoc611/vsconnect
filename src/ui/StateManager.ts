@@ -96,15 +96,22 @@ export class StateManager {
 						break;
 
 					case ServiceActionTypes.AddConnection:
-						const [ protocolIdNew, connectionIdNew ] = message.action.params;
+						const [ protocolIdNew, connectionIdNew, tIdConnect ] = message.action.params;
 						this.addProtocolConnection(protocolIdNew, connectionIdNew);
 						if (this.currentRequest !== undefined
 							&& this.currentRequest.transaction.protocolId === protocolIdNew
 							&& !this.currentRequest.transaction.connectionId) {
 								this.setProtocol(protocolIdNew); // refreshes current request
 						}
+
+						let nodeConnect = this.getHistoryNodeById(tIdConnect);
+						if (nodeConnect !== null)
+						{
+							nodeConnect.value.transaction.connectionId = connectionIdNew;
+							this.revisualizeAndRender(nodeConnect);
+						}
+
 						this.triggerChange();
-							
 						break;
 
 					case ServiceActionTypes.RemoveConnection:
@@ -538,6 +545,13 @@ export class StateManager {
 		this.triggerChange();
 	}
 
+	private getHistoryNodeById(tId: number) : LLNode<IVisualization> | null {
+		if (this.tIdInHistory[tId])
+			return this.tIdInHistory[tId];
+
+		return null;
+	}
+
 	private getFirstProtocolConnection(protocolId: string): number | undefined {
 		let protocolMeta = this.getProtocolMeta(protocolId);
 		if (protocolMeta === null || protocolMeta.isConnectionOriented === false || protocolMeta.connections.length === 0)
@@ -570,6 +584,13 @@ export class StateManager {
 		return await this.remoteCall({
 			type: ServiceActionTypes.Revisualize,
 			params: [viz]
+		});
+	}
+
+	private revisualizeAndRender(node: LLNode<IVisualization>): void {
+		this.revisualize(node.value).then((vizNew) => {
+			node.value = vizNew;
+			this.triggerChange();
 		});
 	}
 

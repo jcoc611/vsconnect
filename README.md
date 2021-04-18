@@ -11,6 +11,7 @@ extension points so you can add extra Protocols and Visualizers via separate VSC
 
 ## Features
  - **HTTP and DNS:** Make REST calls, query for DNS records, and more!
+ - **WebSockets:** Connect to websocket endpoints and exchange frames!
  - **Scripting:** Use JavaScript to compute values for your requests, even based on previous ones!
  - **Synergy:** Well integrated with the things you love about VS Code, like text editing, themes and customizations!
 
@@ -27,7 +28,7 @@ Either of these will create the necessary files in `dist/`. Use the launch confi
 to execute the extension on the Extension Host.
 
 ## Contribute
-Contributions, PRs and issues welcome! For new protocols and Visualizers, you can either contribute
+Contributions, PRs and issues welcome! For new protocols and visualizers, you can either contribute
 them directly to this repo, or create a separate extension and use the commands provided to add them
 to the VSConnect UI *(TODO - not available yet, open an Issue if you are interested)*.
 
