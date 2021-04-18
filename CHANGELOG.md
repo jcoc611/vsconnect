@@ -1,3 +1,11 @@
+<a name="v0.3.1"></a>
+## [v0.3.1](https://github.com/jcoc611/vsconnect/compare/v0.3.0...v0.3.1) (2021-04-18)
+
+### Improvements
+ - Added support for connection-oriented protocols
+ - Added WebSockets
+ - Added command `vsConnectClient.sendCurrentRequest` to send the current request from a different document
+
 <a name="v0.3.0"></a>
 ## [v0.3.0](https://github.com/jcoc611/vsconnect/compare/v0.2.10...v0.3.0) (2021-03-28)
 
