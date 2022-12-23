@@ -1,6 +1,6 @@
 # VSConnect
 
-[![Badge for version for Visual Studio Code extension](https://vsmarketplacebadge.apphb.com/version-short/jcoc611.vsconnect.svg?color=blue&style=flat-square&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/jcoc611.vsconnect.svg?color=blue&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Status](https://img.shields.io/badge/status-beta-blue?color=blue&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?color=blue&style=flat-square)](http://opensource.org/licenses/MIT)
+[![Badge for version for Visual Studio Code extension](https://img.shields.io/visual-studio-marketplace/d/jcoc611.vsconnect?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Installs](https://img.shields.io/visual-studio-marketplace/i/jcoc611.vsconnect?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![Status](https://img.shields.io/badge/status-beta-blue?color=blue&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=jcoc611.vsconnect) [![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?color=blue&style=flat-square)](http://opensource.org/licenses/MIT)
 
 ![Screenshot Preview of v0.3.1](docs/assets/screenshot-client-v0.2.8.gif)
 
